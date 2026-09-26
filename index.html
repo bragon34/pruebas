@@ -453,6 +453,218 @@
         opacity: 0.55;
     }
 
+    /* ---------- Trazos dibujados a mano ---------- */
+
+    .btn.btn-sm {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .trazos-box {
+        margin-top: 12px;
+        border: 1px dashed #c7d2fe;
+        border-radius: 12px;
+        padding: 10px;
+        background: #fafaff;
+    }
+
+    .trazos-barra {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .trazos-titulo {
+        font-size: 14px;
+        margin-right: 4px;
+    }
+
+    .trazos-tol {
+        font-size: 13px;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .trazos-tol input,
+    .trazos-select {
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        background: white;
+    }
+
+    .trazos-tol input {
+        width: 70px;
+    }
+
+    .trazos-select {
+        max-width: 100%;
+    }
+
+    .lista-trazos {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .trazos-vacio {
+        font-size: 13px;
+        color: #64748b;
+        padding: 4px 2px;
+    }
+
+    .trazo-item {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-left: 6px solid var(--c);
+        border-radius: 10px;
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+
+    .trazo-num {
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--c);
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+        display: grid;
+        place-items: center;
+    }
+
+    .trazo-nombre {
+        flex: 1 1 140px;
+        min-width: 0;
+        font-weight: bold;
+        overflow-wrap: anywhere;
+    }
+
+    .trazo-nombre small {
+        display: block;
+        font-weight: normal;
+        color: #64748b;
+    }
+
+    .trazo-acciones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        justify-content: flex-end;
+    }
+
+    .trazo-acciones button {
+        border: none;
+        background: #f1f5f9;
+        border-radius: 6px;
+        padding: 5px 7px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .trazo-acciones button:hover:not(:disabled) {
+        background: #e2e8f0;
+    }
+
+    .trazo-acciones button:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+
+    .control-dibujo {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        padding: 10px;
+        max-width: 270px;
+        font-size: 13px;
+    }
+
+    .control-dibujo small {
+        color: #64748b;
+    }
+
+    .cd-botones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .cd-botones button {
+        border: none;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-weight: bold;
+        font-size: 13px;
+        cursor: pointer;
+        background: #f1f5f9;
+    }
+
+    .cd-botones .cd-ok {
+        background: #059669;
+        color: white;
+    }
+
+    #map.dibujando,
+    #map.dibujando .leaflet-interactive {
+        cursor: crosshair;
+    }
+
+    .vertice-icon div {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid var(--c);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        font-size: 9px;
+        line-height: 14px;
+        text-align: center;
+        color: var(--c);
+    }
+
+    .vertice-icon.inicio div {
+        background: var(--c);
+        color: white;
+    }
+
+    .trazo-inicio div {
+        background: var(--c);
+        color: white;
+        font: bold 11px/20px Arial, sans-serif;
+        text-align: center;
+        border-radius: 6px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    }
+
+    .popup-mover {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #e2e8f0;
+        font-size: 12px;
+    }
+
+    .popup-mover select {
+        margin-top: 4px;
+        width: 100%;
+        padding: 5px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        font-size: 12px;
+    }
+
     .flecha-icon div {
         width: 0;
         height: 0;
@@ -546,6 +758,24 @@
                     <option value="carro">🚗 En carro / moto</option>
                 </select>
             </label>
+        </div>
+
+        <div class="trazos-box">
+            <div class="trazos-barra">
+                <strong class="trazos-titulo">✏️ Mis trazos</strong>
+                <button class="btn btn-sm" id="btnNuevoTrazo">✏️ Nuevo trazo</button>
+                <button class="btn btn-sm" id="btnOrdenarTrazos">📍 Ordenar según mis trazos</button>
+                <label class="trazos-tol" title="Un cliente más lejos que esto de todos los trazos queda en el grupo 'Sin trazo'.">
+                    Tolerancia <input type="number" id="trazoTol" value="40" min="5" max="500" step="5"> m
+                </label>
+                <select id="selTrazosGuardados" class="trazos-select"></select>
+                <button class="btn secondary btn-sm" id="btnGuardarTrazos">💾 Guardar como…</button>
+                <button class="btn secondary btn-sm" id="btnExportarTrazos">📤 Exportar KML</button>
+                <button class="btn secondary btn-sm" id="btnImportarTrazos">📥 Importar KML</button>
+                <input type="file" id="inputTrazos" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/xml,text/xml,application/zip,application/octet-stream,*/*">
+                <button class="btn secondary btn-sm" id="btnBorrarTrazos">🗑️ Borrar todos</button>
+            </div>
+            <div id="listaTrazos" class="lista-trazos"></div>
         </div>
 
         <div id="rutasResumen" class="rutas-resumen"></div>
@@ -925,18 +1155,15 @@
                 marker: null,
                 linea: null,
                 distancia: null,
-                ordenRuta: null
+                ordenRuta: null,
+                uid: i            // identificador único de la fila (para el popup)
             };
 
             if (valido) {
 
                 cliente.marker = L.marker([lat, lon], { icon: clienteIcon }).addTo(map);
 
-                cliente.marker.bindPopup(
-                    `<b>👤 ${escapeHTML(nombre)}</b>` +
-                    `Lat: ${lat.toFixed(7)}<br>` +
-                    `Lon: ${lon.toFixed(7)}`
-                );
+                cliente.marker.bindPopup(popupCliente(cliente));
             }
 
             clientes.push(cliente);
@@ -1438,17 +1665,7 @@
                 map.removeLayer(c.linea);
             }
 
-            if (c.marker) {
-                c.marker.bindPopup(
-                    `<b>👤 ${escapeHTML(c.nombre)}</b>` +
-                    `Lat: ${c.lat.toFixed(7)}<br>` +
-                    `Lon: ${c.lon.toFixed(7)}<br>` +
-                    `📏 Distancia: ${formatearDistancia(c.distancia)}` +
-                    (c.rutaSerp
-                        ? `<br>🐍 ${escapeHTML(c.rutaSerp.nombre)} · Parada ${c.paradaSerp}`
-                        : "")
-                );
-            }
+            refrescarPopupCliente(c);
         });
     }
 
@@ -1510,7 +1727,7 @@
 
                 const numeroParada =
                     c.rutaSerp
-                        ? `🐍 ${escapeHTML(c.rutaSerp.nombre)} · Parada ${c.paradaSerp} · `
+                        ? `${iconoRuta(c.rutaSerp)} ${escapeHTML(c.rutaSerp.nombre)} · Parada ${c.paradaSerp} · `
                         : rutaCalculada && c.ordenRuta !== null
                             ? `🔢 Parada ${c.ordenRuta + 1} · `
                             : "";
@@ -1724,7 +1941,9 @@
         activa: false,
         rutas: [],
         capas: L.layerGroup().addTo(map),
-        sinRutaColapsada: false
+        sinRutaColapsada: false,
+        modo: null,          // "serpentina" | "trazos"
+        tolTrazo: 40
     };
 
     const COLORES_RUTA = [
@@ -1948,39 +2167,31 @@
 
     // ---------- 4. Generar todo ----------
 
-    function generarRutasSerpentina() {
+    function iconoRuta(r) {
+        return { serpentina: "🐍", aislados: "📍", trazo: "✏️", sin: "⚪" }[r && r.tipo] || "🐍";
+    }
 
-        const radio = Math.max(30, parseFloat(document.getElementById("serpRadio").value) || 250);
-        const minimo = Math.max(1, parseInt(document.getElementById("serpMin").value, 10) || 3);
-        const desdeGPS = document.getElementById("serpDesdeGPS").checked;
-
-        const filtro = normalizarEncabezado(buscadorInput.value || "");
-
-        const objetivos = clientes.filter(c =>
-            c.valido && !c.visitado && normalizarEncabezado(c.nombre).includes(filtro)
-        );
-
-        if (objetivos.length === 0) {
-            statusElement.textContent = "⚠️ No hay clientes pendientes con coordenadas válidas para armar rutas.";
-            statusElement.className = "status warning";
-            return;
-        }
+    // Quita rutas anteriores (serpentina, trazos u óptima) antes de armar nuevas.
+    function prepararNuevasRutas() {
 
         limpiarRutasSerpentina(false);
 
-        // La ruta óptima (OSRM) y la serpentina no se muestran a la vez.
         if (lineaRutaOptima) {
             map.removeLayer(lineaRutaOptima);
             lineaRutaOptima = null;
         }
-        clientes.forEach(c => { c.ordenRuta = null; });
 
-        const aXY = crearProyeccion(objetivos);
+        clientes.forEach(c => { c.ordenRuta = null; });
+    }
+
+    // Serpentina automática para un conjunto de clientes. Devuelve las rutas
+    // "en bruto" ({ tipo, puntos: [{ cliente, x, y }], franjas }).
+    function calcularRutasAutomaticas(objetivos, radio, minimo, inicioLL) {
+
+        const aXY = crearProyeccion(objetivos.concat(inicioLL ? [inicioLL] : []));
 
         const puntos = objetivos.map(c => ({ cliente: c, ...aXY(c.lat, c.lon) }));
-
-        const hayGPS = desdeGPS && userLat !== null && userLon !== null;
-        const inicio = hayGPS ? aXY(userLat, userLon) : null;
+        const inicio = inicioLL ? aXY(inicioLL.lat, inicioLL.lon) : null;
 
         const grupos = agruparPorCercania(puntos, radio);
         const principales = grupos.filter(g => g.length >= minimo);
@@ -2020,13 +2231,32 @@
             });
         }
 
-        // Numeración y datos de cada ruta.
+        return { rutas, aislados: aislados.length };
+    }
+
+    // Numera, colorea, dibuja y enlaza con la lista un conjunto de rutas en bruto.
+    function finalizarRutas(rutas, modo, hayGPS) {
+
         let ordenGlobal = 0;
+        let nAuto = 0;
 
-        rutas.forEach((r, i) => {
+        rutas.forEach(r => {
 
-            r.nombre = r.tipo === "aislados" ? "Aislados" : `Ruta ${i + 1}`;
-            r.color = r.tipo === "aislados" ? COLOR_AISLADOS : COLORES_RUTA[i % COLORES_RUTA.length];
+            if (r.tipo === "serpentina") {
+                nAuto++;
+                r.nombre = modo === "trazos" ? `Auto ${nAuto}` : `Ruta ${nAuto}`;
+                r.color = COLORES_RUTA[(nAuto - 1) % COLORES_RUTA.length];
+            } else if (r.tipo === "aislados") {
+                r.nombre = "Aislados";
+                r.color = COLOR_AISLADOS;
+            } else if (r.tipo === "trazo") {
+                r.nombre = r.trazo.nombre;
+                r.color = r.trazo.color;
+            } else if (r.tipo === "sin") {
+                r.nombre = "Sin trazo";
+                r.color = COLOR_SIN_TRAZO;
+            }
+
             r.clientes = r.puntos.map(p => p.cliente);
             r.metros = 0;
             r.visible = true;      // se ve en el mapa y en la lista
@@ -2042,23 +2272,69 @@
                     r.metros += calcularDistanciaMetros(prev.lat, prev.lon, c.lat, c.lon);
                 }
             });
+
+            // En un trazo, lo que se camina es el propio trazo.
+            if (r.tipo === "trazo") r.metros = largoTrazo(r.trazo);
         });
 
         serp.rutas = rutas;
         serp.activa = true;
+        serp.modo = modo;
         rutaCalculada = true;
+
+        // Con rutas por trazo, los trazos se ven como parte de cada ruta
+        // (y se ocultan junto con ella), así que la capa de trazos sueltos se retira.
+        if (modo === "trazos") {
+            map.removeLayer(capaTrazos);
+        } else if (!map.hasLayer(capaTrazos)) {
+            capaTrazos.addTo(map);
+        }
 
         dibujarRutasSerpentina(hayGPS);
         renderizarResumenRutas();
         actualizarDistanciasYLineas();
         renderizarListaClientes();
+    }
+
+    function generarRutasSerpentina() {
+
+        const radio = Math.max(30, parseFloat(document.getElementById("serpRadio").value) || 250);
+        const minimo = Math.max(1, parseInt(document.getElementById("serpMin").value, 10) || 3);
+        const desdeGPS = document.getElementById("serpDesdeGPS").checked;
+
+        if (edicion.activa) {
+            statusElement.textContent = "✏️ Termina o cancela el trazo que estás dibujando antes de generar rutas.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        const filtro = normalizarEncabezado(buscadorInput.value || "");
+
+        const objetivos = clientes.filter(c =>
+            c.valido && !c.visitado && normalizarEncabezado(c.nombre).includes(filtro)
+        );
+
+        if (objetivos.length === 0) {
+            statusElement.textContent = "⚠️ No hay clientes pendientes con coordenadas válidas para armar rutas.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        prepararNuevasRutas();
+
+        const hayGPS = desdeGPS && userLat !== null && userLon !== null;
+        const inicioLL = hayGPS ? { lat: userLat, lon: userLon } : null;
+
+        const { rutas, aislados } = calcularRutasAutomaticas(objetivos, radio, minimo, inicioLL);
+
+        finalizarRutas(rutas, "serpentina", hayGPS);
 
         const nRutas = rutas.filter(r => r.tipo === "serpentina").length;
         const total = rutas.reduce((s, r) => s + r.metros, 0);
 
         statusElement.textContent =
-            `✅ ${nRutas} ruta(s) serpentina con ${objetivos.length - aislados.length} paradas` +
-            (aislados.length ? ` · ${aislados.length} punto(s) aislado(s) en ruta aparte` : "") +
+            `✅ ${nRutas} ruta(s) serpentina con ${objetivos.length - aislados} paradas` +
+            (aislados ? ` · ${aislados} punto(s) aislado(s) en ruta aparte` : "") +
             ` · ${formatearDistancia(total)} en línea recta.` +
             (hayGPS ? "" : " (Sin GPS: la ruta empieza en la esquina que da el recorrido más corto.)");
         statusElement.className = "status success";
@@ -2066,6 +2342,53 @@
         const todos = L.latLngBounds(objetivos.map(c => [c.lat, c.lon]));
         if (hayGPS) todos.extend([userLat, userLon]);
         map.fitBounds(todos, { padding: [40, 40] });
+    }
+
+    // Convierte los clientes del grupo "Sin trazo" en rutas serpentina,
+    // conservando las rutas por trazo que ya existen.
+    function organizarSinTrazoAutomatico(rutaSin) {
+
+        const radio = Math.max(30, parseFloat(document.getElementById("serpRadio").value) || 250);
+        const minimo = Math.max(1, parseInt(document.getElementById("serpMin").value, 10) || 3);
+
+        const pendientes = rutaSin.clientes.filter(c => !c.visitado);
+
+        if (!pendientes.length) {
+            statusElement.textContent = "✅ No quedan clientes pendientes sin trazo.";
+            statusElement.className = "status success";
+            return;
+        }
+
+        // Rutas por trazo actuales, en bruto, para reconstruirlas igual.
+        const previas = serp.rutas
+            .filter(r => r !== rutaSin)
+            .map(r => ({
+                tipo: r.tipo,
+                trazo: r.trazo,
+                franjas: r.franjas,
+                puntos: r.clientes.map(c => ({ cliente: c }))
+            }));
+
+        // La parte automática arranca donde termina la última ruta existente.
+        const ultimaRuta = previas[previas.length - 1];
+        const ultimo = ultimaRuta ? ultimaRuta.puntos[ultimaRuta.puntos.length - 1].cliente : null;
+        const inicioLL = ultimo ? { lat: ultimo.lat, lon: ultimo.lon } : null;
+
+        const { rutas: nuevas, aislados } = calcularRutasAutomaticas(pendientes, radio, minimo, inicioLL);
+
+        const visitadosSin = rutaSin.clientes.filter(c => c.visitado);
+
+        prepararNuevasRutas();
+
+        const hayGPS = document.getElementById("serpDesdeGPS").checked && userLat !== null;
+        finalizarRutas(previas.concat(nuevas), "trazos", hayGPS);
+
+        statusElement.textContent =
+            `✅ ${pendientes.length - aislados} cliente(s) sin trazo organizados en ` +
+            `${nuevas.filter(r => r.tipo === "serpentina").length} ruta(s) automática(s)` +
+            (aislados ? ` · ${aislados} aislado(s)` : "") +
+            (visitadosSin.length ? ` · ${visitadosSin.length} ya visitado(s) quedan en "Sin ruta"` : "") + ".";
+        statusElement.className = "status success";
     }
 
     // ---------- Dibujo en el mapa ----------
@@ -2118,28 +2441,45 @@
 
         serp.rutas.forEach((r, i) => {
 
-            const latlngs = r.clientes.map(c => [c.lat, c.lon]);
+            // Una ruta por trazo se dibuja sobre el trazo; las demás unen los clientes.
+            const latlngs = r.tipo === "trazo"
+                ? r.trazo.puntos.map(p => [p[0], p[1]])
+                : r.clientes.map(c => [c.lat, c.lon]);
 
             r.capa = L.layerGroup().addTo(serp.capas);
 
             r.linea = L.polyline(latlngs, {
                 color: r.color,
-                weight: 4,
+                weight: r.tipo === "trazo" ? 5 : 4,
                 opacity: 0.9,
-                dashArray: r.tipo === "aislados" ? "8, 8" : null
+                dashArray: r.tipo === "aislados" || r.tipo === "sin" ? "8, 8" : null
             }).addTo(r.capa);
 
             r.linea.bindPopup(
-                `<b>🐍 ${escapeHTML(r.nombre)}</b>${r.clientes.length} paradas · ${formatearDistancia(r.metros)}`
+                `<b>${iconoRuta(r)} ${escapeHTML(r.nombre)}</b>${r.clientes.length} paradas · ${formatearDistancia(r.metros)}`
             );
 
             r.flechas = L.layerGroup().addTo(r.capa);
             dibujarFlechas(latlngs, r.color, r.flechas);
 
+            // En un trazo: línea fina desde cada cliente hasta el punto del trazo donde se entrega.
+            if (r.tipo === "trazo") {
+                r.clientes.forEach(c => {
+                    if (!c._proyLL) return;
+                    L.polyline([[c.lat, c.lon], c._proyLL], {
+                        color: r.color,
+                        weight: 1.5,
+                        opacity: 0.8,
+                        dashArray: "2, 4",
+                        interactive: false
+                    }).addTo(r.capa);
+                });
+            }
+
             r.clientes.forEach(actualizarIconoParada);
 
-            // Tramo desde tu ubicación hasta la primera parada de la primera ruta.
-            if (i === 0 && hayGPS) {
+            // Tramo desde tu ubicación hasta el inicio de la primera ruta.
+            if (i === 0 && hayGPS && latlngs.length) {
                 L.polyline([[userLat, userLon], latlngs[0]], {
                     color: r.color,
                     weight: 2,
@@ -2150,19 +2490,28 @@
         });
     }
 
+    function detalleRuta(r) {
+
+        if (r.tipo === "serpentina") return ` · ${r.franjas} franja(s)`;
+        if (r.tipo === "aislados") return " · puntos lejos del resto";
+        if (r.tipo === "trazo") return " de trazo";
+        if (r.tipo === "sin") return ` · a más de ${serp.tolTrazo || 40} m de tus trazos`;
+        return "";
+    }
+
     function renderizarResumenRutas() {
 
         rutasResumenElement.innerHTML = serp.rutas.map((r, i) => `
             <div class="ruta-chip${r.visible ? "" : " oculta"}" style="--c:${r.color}">
-                <strong>${r.tipo === "aislados" ? "📍" : "🐍"} ${escapeHTML(r.nombre)}</strong>
-                ${r.clientes.filter(c => !c.visitado).length}/${r.clientes.length} pendientes · ${formatearDistancia(r.metros)}
-                ${r.tipo === "serpentina" ? ` · ${r.franjas} franja(s)` : " · puntos lejos del resto"}
+                <strong>${iconoRuta(r)} ${escapeHTML(r.nombre)}</strong>
+                ${r.clientes.filter(c => !c.visitado).length}/${r.clientes.length} pendientes · ${formatearDistancia(r.metros)}${detalleRuta(r)}
                 <span class="ruta-info" id="rutaInfo${i}">${escapeHTML(r.infoTexto || "")}</span>
                 <div class="ruta-acciones">
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="visible">${r.visible ? "🙈 Ocultar" : "👁️ Mostrar"}</button>
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="solo">🎯 Solo esta</button>
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="ver">🔍 Ver</button>
-                    <button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="calles">🛣️ Trazar recorrido</button>
+                    ${r.tipo === "trazo" ? "" : `<button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="calles">🛣️ Trazar recorrido</button>`}
+                    ${r.tipo === "sin" ? `<button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="auto">🐍 Serpentina para estos</button>` : ""}
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="maps">🧭 Google Maps</button>
                 </div>
             </div>
@@ -2186,6 +2535,8 @@
                     map.fitBounds(r.linea.getBounds(), { padding: [40, 40], maxZoom: 18 });
                 } else if (accion === "calles") {
                     seguirCalles(r, +boton.getAttribute("data-ruta"), boton);
+                } else if (accion === "auto") {
+                    organizarSinTrazoAutomatico(r);
                 } else if (accion === "maps") {
                     abrirEnGoogleMaps(r);
                 }
@@ -2400,7 +2751,7 @@
             html += grupo(
                 String(i),
                 r.nombre,
-                r.tipo === "aislados" ? "📍" : "🐍",
+                iconoRuta(r),
                 r.color,
                 items,
                 r.clientes.length,
@@ -2506,6 +2857,11 @@
 
         serp.rutas = [];
         serp.activa = false;
+        serp.modo = null;
+
+        // Sin rutas por trazo, los trazos vuelven a verse solos.
+        if (!map.hasLayer(capaTrazos)) capaTrazos.addTo(map);
+        if (typeof renderizarListaTrazos === "function") renderizarListaTrazos();
 
         if (!lineaRutaOptima) rutaCalculada = false;
 
@@ -2514,10 +2870,914 @@
         if (avisar) {
             actualizarDistanciasYLineas();
             renderizarListaClientes();
-            statusElement.textContent = "🧹 Rutas serpentina quitadas del mapa.";
+            statusElement.textContent = "🧹 Rutas quitadas del mapa.";
             statusElement.className = "status";
         }
     }
+
+    // ==========================================================
+    // TRAZOS DIBUJADOS A MANO (rutas según la geografía real)
+    // ==========================================================
+    //
+    // Tú dibujas uno o varios trazos por donde caminas (calles, escaleras,
+    // pasajes). El punto donde empiezas a dibujar es donde empieza la entrega.
+    //
+    // "Ordenar según mis trazos":
+    //   1. Cada cliente se asigna al trazo que le queda más cerca (distancia a
+    //      la LÍNEA, no a sus puntos). Si está a más de la tolerancia de todos
+    //      los trazos, va al grupo "Sin trazo".
+    //   2. Dentro de cada trazo, los clientes se ordenan por lo avanzado que
+    //      está su punto de entrega sobre el trazo (metro 50 antes que metro 300).
+    //   3. Si el trazo pasa dos veces cerca del cliente (ida y vuelta por la
+    //      misma calle), se entrega en la PRIMERA pasada.
+    //   4. Los trazos se recorren en el orden de la lista (se cambia con ↑ ↓).
+    //   5. Puedes forzar a mano el trazo de un cliente desde su marcador.
+
+    const TRAZO_COLORES = [
+        "#e11d48", "#2563eb", "#059669", "#d97706",
+        "#7c3aed", "#0891b2", "#be123c", "#4d7c0f"
+    ];
+    const COLOR_SIN_TRAZO = "#94a3b8";
+
+    // Margen para decidir que dos pasadas del mismo trazo están "igual de cerca".
+    const PRIMERA_PASADA_M = 10;
+
+    const CLAVE_TRAZOS_ACTUAL = "gpstrack.trazos.actual";
+    const CLAVE_TRAZOS_GUARDADOS = "gpstrack.trazos.guardados";
+
+    let trazos = [];                 // { id, nombre, color, puntos: [[lat, lon], ...] }
+    let asignacionesManuales = {};   // nombre del cliente -> id del trazo
+    let siguienteIdTrazo = 1;
+
+    const capaTrazos = L.layerGroup().addTo(map);
+
+    const edicion = {
+        activa: false,
+        trazo: null,
+        original: null,
+        esNuevo: false,
+        reordenar: false,
+        ultimoArrastre: 0,
+        capa: L.layerGroup()
+    };
+
+    const listaTrazosElement = document.getElementById("listaTrazos");
+    const selTrazosGuardados = document.getElementById("selTrazosGuardados");
+    const inputTrazos = document.getElementById("inputTrazos");
+
+    // ---------- Control flotante sobre el mapa mientras dibujas ----------
+
+    const ControlDibujo = L.Control.extend({
+        options: { position: "topleft" },
+        onAdd: function () {
+            const div = L.DomUtil.create("div", "control-dibujo");
+            div.innerHTML = `
+                <div class="cd-texto" id="cdTexto"></div>
+                <div class="cd-botones">
+                    <button type="button" id="cdDeshacer">↩️ Deshacer punto</button>
+                    <button type="button" id="cdTerminar" class="cd-ok">✔️ Terminar</button>
+                    <button type="button" id="cdCancelar">✖️ Cancelar</button>
+                </div>
+            `;
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.disableScrollPropagation(div);
+            div.style.display = "none";
+            return div;
+        }
+    });
+
+    const controlDibujo = new ControlDibujo();
+    controlDibujo.addTo(map);
+
+    document.getElementById("cdDeshacer").addEventListener("click", () => {
+        if (!edicion.activa) return;
+        edicion.trazo.puntos.pop();
+        redibujarEdicion();
+    });
+    document.getElementById("cdTerminar").addEventListener("click", () => terminarEdicion(true));
+    document.getElementById("cdCancelar").addEventListener("click", () => terminarEdicion(false));
+
+    // ---------- Utilidades de geometría ----------
+
+    function largoTrazo(t) {
+        let d = 0;
+        for (let i = 1; i < t.puntos.length; i++) {
+            const a = t.puntos[i - 1], b = t.puntos[i];
+            d += calcularDistanciaMetros(a[0], a[1], b[0], b[1]);
+        }
+        return d;
+    }
+
+    // Proyección local ida y vuelta (metros <-> lat/lon).
+    function crearProyeccionDoble(puntos) {
+
+        const lat0 = puntos.reduce((s, p) => s + p.lat, 0) / puntos.length;
+        const lon0 = puntos.reduce((s, p) => s + p.lon, 0) / puntos.length;
+        const kx = 111320 * Math.cos(lat0 * Math.PI / 180);
+        const ky = 110540;
+
+        return {
+            aXY: (lat, lon) => ({ x: (lon - lon0) * kx, y: (lat - lat0) * ky }),
+            aLL: (x, y) => [lat0 + y / ky, lon0 + x / kx]
+        };
+    }
+
+    function prepararTrazoXY(t, aXY) {
+        const P = t.puntos.map(p => aXY(p[0], p[1]));
+        const acum = [0];
+        for (let i = 1; i < P.length; i++) acum.push(acum[i - 1] + dist2D(P[i - 1], P[i]));
+        return { P, acum };
+    }
+
+    // Punto del trazo más cercano al cliente y cuántos metros de trazo lleva hasta ahí.
+    function proyectarEnTrazo(pt, g) {
+
+        const opciones = [];
+
+        for (let i = 0; i < g.P.length - 1; i++) {
+
+            const a = g.P[i], b = g.P[i + 1];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const L2 = dx * dx + dy * dy;
+
+            let t = L2 > 0 ? ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / L2 : 0;
+            t = Math.max(0, Math.min(1, t));
+
+            const q = { x: a.x + t * dx, y: a.y + t * dy };
+
+            opciones.push({
+                d: dist2D(pt, q),
+                along: g.acum[i] + t * Math.sqrt(L2),
+                q
+            });
+        }
+
+        const dMin = Math.min(...opciones.map(o => o.d));
+
+        // Primera pasada: entre los tramos casi igual de cercanos, el que llega antes.
+        const elegido = opciones
+            .filter(o => o.d <= dMin + PRIMERA_PASADA_M)
+            .sort((x, y) => x.along - y.along)[0];
+
+        return { dMin, along: elegido.along, q: elegido.q };
+    }
+
+    // ---------- Ordenar según los trazos ----------
+
+    document.getElementById("btnOrdenarTrazos")
+        .addEventListener("click", () => ordenarPorTrazos(false));
+
+    function ordenarPorTrazos(silencioso) {
+
+        if (edicion.activa) {
+            statusElement.textContent = "✏️ Termina o cancela el trazo que estás dibujando antes de ordenar.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        if (!trazos.length) {
+            statusElement.textContent = "⚠️ Primero dibuja al menos un trazo con ✏️ Nuevo trazo.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        const tol = Math.max(5, parseFloat(document.getElementById("trazoTol").value) || 40);
+
+        const filtro = normalizarEncabezado(buscadorInput.value || "");
+
+        const objetivos = clientes.filter(c =>
+            c.valido && !c.visitado && normalizarEncabezado(c.nombre).includes(filtro)
+        );
+
+        if (!objetivos.length) {
+            statusElement.textContent = "⚠️ No hay clientes pendientes con coordenadas válidas para ordenar.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        prepararNuevasRutas();
+
+        const referencia = objetivos.concat(
+            trazos.flatMap(t => t.puntos.map(p => ({ lat: p[0], lon: p[1] })))
+        );
+        const { aXY, aLL } = crearProyeccionDoble(referencia);
+
+        const geometrias = trazos.map(t => prepararTrazoXY(t, aXY));
+        const porTrazo = trazos.map(() => []);
+        const sinTrazo = [];
+        let forzados = 0;
+
+        objetivos.forEach(c => {
+
+            const pt = aXY(c.lat, c.lon);
+            let mejor = null;
+
+            const idxManual = trazos.findIndex(t => t.id === asignacionesManuales[c.nombre]);
+
+            if (idxManual >= 0) {
+                mejor = { ...proyectarEnTrazo(pt, geometrias[idxManual]), i: idxManual, manual: true };
+                forzados++;
+            } else {
+                geometrias.forEach((g, i) => {
+                    const pr = proyectarEnTrazo(pt, g);
+                    if (!mejor || pr.dMin < mejor.dMin - 0.01) mejor = { ...pr, i };
+                });
+            }
+
+            if (!mejor || (!mejor.manual && mejor.dMin > tol)) {
+                c._proyLL = null;
+                sinTrazo.push(c);
+                return;
+            }
+
+            c._proyLL = aLL(mejor.q.x, mejor.q.y);
+            porTrazo[mejor.i].push({ cliente: c, along: mejor.along });
+        });
+
+        const rutas = [];
+        let trazosVacios = 0;
+
+        trazos.forEach((t, i) => {
+            const items = porTrazo[i].sort((a, b) => a.along - b.along);
+            if (items.length) {
+                rutas.push({ tipo: "trazo", trazo: t, puntos: items, franjas: 0 });
+            } else {
+                trazosVacios++;
+            }
+        });
+
+        if (sinTrazo.length) {
+
+            const pts = sinTrazo.map(c => ({ cliente: c, ...aXY(c.lat, c.lon) }));
+
+            const ultimaRuta = rutas[rutas.length - 1];
+            const ultimo = ultimaRuta ? ultimaRuta.puntos[ultimaRuta.puntos.length - 1].cliente : null;
+
+            rutas.push({
+                tipo: "sin",
+                puntos: rutaVecinoMasCercano(pts, ultimo ? aXY(ultimo.lat, ultimo.lon) : null),
+                franjas: 0
+            });
+        }
+
+        serp.tolTrazo = tol;
+
+        const hayGPS = document.getElementById("serpDesdeGPS").checked && userLat !== null && userLon !== null;
+
+        finalizarRutas(rutas, "trazos", hayGPS);
+
+        const conTrazo = objetivos.length - sinTrazo.length;
+
+        statusElement.textContent =
+            `✅ ${conTrazo} cliente(s) ordenados en ${rutas.filter(r => r.tipo === "trazo").length} trazo(s)` +
+            (forzados ? ` (${forzados} asignado(s) a mano)` : "") +
+            (sinTrazo.length ? ` · ⚪ ${sinTrazo.length} sin trazo (a más de ${tol} m)` : "") +
+            (trazosVacios ? ` · ${trazosVacios} trazo(s) sin clientes cerca` : "") + ".";
+        statusElement.className = sinTrazo.length ? "status warning" : "status success";
+
+        if (!silencioso) {
+            const limites = L.latLngBounds(objetivos.map(c => [c.lat, c.lon]));
+            trazos.forEach(t => t.puntos.forEach(p => limites.extend(p)));
+            map.fitBounds(limites, { padding: [40, 40] });
+        }
+    }
+
+    function reordenarSiHaceFalta() {
+        if (serp.activa && serp.modo === "trazos" && !edicion.activa) ordenarPorTrazos(true);
+    }
+
+    // ---------- Dibujar trazos (vista normal) ----------
+
+    function dibujarTrazos() {
+
+        capaTrazos.clearLayers();
+
+        trazos.forEach((t, i) => {
+
+            if (edicion.activa && edicion.trazo === t) return;
+            if (t.puntos.length < 2) return;
+
+            L.polyline(t.puntos, {
+                color: t.color,
+                weight: 4,
+                opacity: 0.75,
+                dashArray: "10, 6"
+            })
+                .bindPopup(`<b>✏️ ${escapeHTML(t.nombre)}</b>Orden ${i + 1} · ${formatearDistancia(largoTrazo(t))}`)
+                .addTo(capaTrazos);
+
+            dibujarFlechas(t.puntos, t.color, capaTrazos);
+
+            L.marker(t.puntos[0], {
+                interactive: false,
+                keyboard: false,
+                icon: L.divIcon({
+                    className: "trazo-inicio",
+                    html: `<div style="--c:${t.color}">T${i + 1}</div>`,
+                    iconSize: [28, 20],
+                    iconAnchor: [14, 10]
+                })
+            }).addTo(capaTrazos);
+        });
+    }
+
+    // ---------- Lista de trazos (en la cabecera) ----------
+
+    function renderizarListaTrazos() {
+
+        if (!trazos.length) {
+            listaTrazosElement.innerHTML =
+                '<div class="trazos-vacio">Aún no hay trazos. Pulsa <b>✏️ Nuevo trazo</b> y toca el mapa por donde caminas, empezando por donde quieres iniciar la entrega.</div>';
+            return;
+        }
+
+        const nClientes = id => {
+            const r = serp.activa && serp.modo === "trazos"
+                ? serp.rutas.find(x => x.tipo === "trazo" && x.trazo.id === id)
+                : null;
+            return r ? ` · ${r.clientes.length} cliente(s)` : "";
+        };
+
+        listaTrazosElement.innerHTML = trazos.map((t, i) => `
+            <div class="trazo-item" style="--c:${t.color}">
+                <span class="trazo-num">${i + 1}</span>
+                <span class="trazo-nombre">${escapeHTML(t.nombre)}
+                    <small>${formatearDistancia(largoTrazo(t))}${nClientes(t.id)}</small>
+                </span>
+                <span class="trazo-acciones">
+                    <button type="button" data-trazo="${i}" data-t="subir" title="Recorrer antes" ${i === 0 ? "disabled" : ""}>↑</button>
+                    <button type="button" data-trazo="${i}" data-t="bajar" title="Recorrer después" ${i === trazos.length - 1 ? "disabled" : ""}>↓</button>
+                    <button type="button" data-trazo="${i}" data-t="invertir" title="Invertir el sentido">⇄</button>
+                    <button type="button" data-trazo="${i}" data-t="ver" title="Ver en el mapa">🔍</button>
+                    <button type="button" data-trazo="${i}" data-t="editar" title="Editar puntos">✏️</button>
+                    <button type="button" data-trazo="${i}" data-t="nombre" title="Cambiar nombre">🏷️</button>
+                    <button type="button" data-trazo="${i}" data-t="borrar" title="Borrar trazo">🗑️</button>
+                </span>
+            </div>
+        `).join("");
+
+        listaTrazosElement.querySelectorAll("button[data-trazo]").forEach(b => {
+            b.addEventListener("click", () => accionTrazo(+b.getAttribute("data-trazo"), b.getAttribute("data-t")));
+        });
+    }
+
+    function accionTrazo(i, accion) {
+
+        const t = trazos[i];
+        if (!t) return;
+
+        if (edicion.activa) {
+            statusElement.textContent = "✏️ Termina o cancela el trazo que estás dibujando primero.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        if (accion === "subir" && i > 0) {
+            [trazos[i - 1], trazos[i]] = [trazos[i], trazos[i - 1]];
+        } else if (accion === "bajar" && i < trazos.length - 1) {
+            [trazos[i + 1], trazos[i]] = [trazos[i], trazos[i + 1]];
+        } else if (accion === "invertir") {
+            t.puntos.reverse();
+        } else if (accion === "ver") {
+            map.fitBounds(L.latLngBounds(t.puntos), { padding: [40, 40], maxZoom: 18 });
+            return;
+        } else if (accion === "editar") {
+            iniciarEdicion(t, false);
+            return;
+        } else if (accion === "nombre") {
+            const nuevo = prompt("Nombre del trazo:", t.nombre);
+            if (!nuevo || !nuevo.trim()) return;
+            t.nombre = nuevo.trim();
+        } else if (accion === "borrar") {
+            if (!confirm(`¿Borrar "${t.nombre}"?`)) return;
+            trazos.splice(i, 1);
+            Object.keys(asignacionesManuales).forEach(k => {
+                if (asignacionesManuales[k] === t.id) delete asignacionesManuales[k];
+            });
+        }
+
+        guardarTrazosLocal();
+        dibujarTrazos();
+
+        if (serp.activa && serp.modo === "trazos") {
+            if (trazos.length) {
+                ordenarPorTrazos(true);
+            } else {
+                limpiarRutasSerpentina(true);
+            }
+        }
+
+        renderizarListaTrazos();
+    }
+
+    // ---------- Dibujar / editar un trazo ----------
+
+    document.getElementById("btnNuevoTrazo").addEventListener("click", () => {
+
+        if (edicion.activa) return;
+
+        const t = {
+            id: siguienteIdTrazo++,
+            nombre: `Trazo ${trazos.length + 1}`,
+            color: TRAZO_COLORES[trazos.length % TRAZO_COLORES.length],
+            puntos: []
+        };
+
+        iniciarEdicion(t, true);
+    });
+
+    function iniciarEdicion(t, esNuevo) {
+
+        // Si las rutas están armadas por trazos, se quitan mientras editas
+        // y se vuelven a ordenar al terminar.
+        edicion.reordenar = serp.activa && serp.modo === "trazos";
+
+        if (edicion.reordenar) {
+            limpiarRutasSerpentina(false);
+            actualizarDistanciasYLineas();
+            renderizarListaClientes();
+        }
+
+        edicion.activa = true;
+        edicion.trazo = t;
+        edicion.original = t.puntos.map(p => p.slice());
+        edicion.esNuevo = esNuevo;
+
+        map.doubleClickZoom.disable();
+        map.getContainer().classList.add("dibujando");
+        edicion.capa.addTo(map);
+        controlDibujo.getContainer().style.display = "";
+
+        dibujarTrazos();
+        redibujarEdicion();
+
+        statusElement.textContent = esNuevo
+            ? `✏️ Dibujando "${t.nombre}": toca el mapa por donde caminas, en el orden en que vas a entregar.`
+            : `✏️ Editando "${t.nombre}": arrastra un punto para moverlo, tócalo para borrarlo o toca el mapa para alargar el trazo.`;
+        statusElement.className = "status";
+    }
+
+    function redibujarEdicion() {
+
+        const t = edicion.trazo;
+        edicion.capa.clearLayers();
+
+        const linea = L.polyline(t.puntos, { color: t.color, weight: 5, opacity: 0.9 }).addTo(edicion.capa);
+
+        if (t.puntos.length > 1) dibujarFlechas(t.puntos, t.color, edicion.capa);
+
+        t.puntos.forEach((p, i) => {
+
+            const m = L.marker(p, {
+                draggable: true,
+                icon: L.divIcon({
+                    className: "vertice-icon" + (i === 0 ? " inicio" : ""),
+                    html: `<div style="--c:${t.color}">${i === 0 ? "▶" : ""}</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(edicion.capa);
+
+            m.on("drag", e => {
+                const ll = e.target.getLatLng();
+                t.puntos[i] = [ll.lat, ll.lng];
+                linea.setLatLngs(t.puntos);
+            });
+
+            m.on("dragend", () => {
+                edicion.ultimoArrastre = Date.now();
+                redibujarEdicion();
+            });
+
+            // Tocar un punto (sin arrastrarlo) lo borra.
+            m.on("click", () => {
+                if (Date.now() - edicion.ultimoArrastre < 400) return;
+                t.puntos.splice(i, 1);
+                redibujarEdicion();
+            });
+        });
+
+        document.getElementById("cdTexto").innerHTML =
+            `<b>${escapeHTML(t.nombre)}</b> · ${t.puntos.length} punto(s) · ${formatearDistancia(largoTrazo(t))}<br>` +
+            `<small>Toca el mapa para agregar · arrastra para mover · toca un punto para borrarlo</small>`;
+    }
+
+    // Mientras dibujas, tocar un barrio u otra línea no abre su ventanita.
+    map.on("popupopen", e => {
+
+        if (edicion.activa) {
+            map.closePopup();
+            return;
+        }
+
+        // Al abrir un cliente, su lista de trazos se actualiza (por si creaste o renombraste trazos).
+        const c = clientes.find(x => x.marker && x.marker === e.popup._source);
+        if (c) e.popup.setContent(popupCliente(c));
+    });
+
+    map.on("click", e => {
+        if (!edicion.activa) return;
+        edicion.trazo.puntos.push([e.latlng.lat, e.latlng.lng]);
+        redibujarEdicion();
+    });
+
+    function terminarEdicion(guardar) {
+
+        if (!edicion.activa) return;
+
+        const t = edicion.trazo;
+
+        if (guardar && t.puntos.length < 2) {
+            statusElement.textContent = "⚠️ Un trazo necesita al menos 2 puntos. Toca el mapa para agregar más o pulsa Cancelar.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        if (!guardar) {
+            t.puntos = edicion.original;
+        } else if (edicion.esNuevo) {
+            trazos.push(t);
+        }
+
+        edicion.activa = false;
+        edicion.trazo = null;
+        edicion.capa.clearLayers();
+        map.removeLayer(edicion.capa);
+        controlDibujo.getContainer().style.display = "none";
+        map.doubleClickZoom.enable();
+        map.getContainer().classList.remove("dibujando");
+
+        guardarTrazosLocal();
+        dibujarTrazos();
+
+        if (edicion.reordenar) {
+            edicion.reordenar = false;
+            ordenarPorTrazos(true);
+        } else {
+            statusElement.textContent = guardar
+                ? `✅ "${t.nombre}" guardado (${formatearDistancia(largoTrazo(t))}). Pulsa 📍 Ordenar según mis trazos cuando tengas todos.`
+                : "✖️ Cambios del trazo descartados.";
+            statusElement.className = guardar ? "status success" : "status";
+        }
+
+        renderizarListaTrazos();
+    }
+
+    // ---------- Asignar un cliente a un trazo a mano (desde su marcador) ----------
+
+    function popupCliente(c) {
+
+        let html =
+            `<b>👤 ${escapeHTML(c.nombre)}</b>` +
+            `Lat: ${c.lat.toFixed(7)}<br>` +
+            `Lon: ${c.lon.toFixed(7)}`;
+
+        if (c.distancia !== null && c.distancia !== undefined) {
+            html += `<br>📏 Distancia: ${formatearDistancia(c.distancia)}`;
+        }
+
+        if (c.rutaSerp) {
+            html += `<br>${iconoRuta(c.rutaSerp)} ${escapeHTML(c.rutaSerp.nombre)} · Parada ${c.paradaSerp}`;
+        }
+
+        if (trazos.length) {
+
+            const actual = asignacionesManuales[c.nombre];
+
+            html += `
+                <div class="popup-mover">
+                    <label>Asignar a trazo:
+                        <select class="select-mover-trazo" data-uid="${c.uid}">
+                            <option value="">Automático (el más cercano)</option>
+                            ${trazos.map(t => `<option value="${t.id}"${t.id === actual ? " selected" : ""}>${escapeHTML(t.nombre)}</option>`).join("")}
+                        </select>
+                    </label>
+                </div>
+            `;
+        }
+
+        return html;
+    }
+
+    function refrescarPopupCliente(c) {
+
+        if (!c.marker) return;
+
+        const html = popupCliente(c);
+
+        if (c.marker.getPopup()) {
+            c.marker.setPopupContent(html);
+        } else {
+            c.marker.bindPopup(html);
+        }
+    }
+
+    document.addEventListener("change", e => {
+
+        const sel = e.target.closest ? e.target.closest(".select-mover-trazo") : null;
+        if (!sel) return;
+
+        const c = clientes.find(x => x.uid === +sel.getAttribute("data-uid"));
+        if (!c) return;
+
+        const id = sel.value ? +sel.value : null;
+        const trazo = trazos.find(t => t.id === id);
+
+        if (trazo) {
+            asignacionesManuales[c.nombre] = id;
+        } else {
+            delete asignacionesManuales[c.nombre];
+        }
+
+        guardarTrazosLocal();
+
+        if (serp.activa && serp.modo === "trazos") {
+            map.closePopup();
+            ordenarPorTrazos(true);
+            statusElement.textContent = trazo
+                ? `✅ ${c.nombre} ahora va en "${trazo.nombre}" (parada ${c.paradaSerp}).`
+                : `✅ ${c.nombre} vuelve a asignarse al trazo más cercano.`;
+            statusElement.className = "status success";
+        } else {
+            statusElement.textContent = "✅ Asignación guardada. Se aplica al pulsar 📍 Ordenar según mis trazos.";
+            statusElement.className = "status success";
+        }
+    });
+
+    // ---------- Guardar en el celular ----------
+
+    function estadoTrazos() {
+        return {
+            trazos: trazos.map(t => ({ id: t.id, nombre: t.nombre, color: t.color, puntos: t.puntos })),
+            manuales: asignacionesManuales
+        };
+    }
+
+    function aplicarEstadoTrazos(estado) {
+
+        trazos = (estado && Array.isArray(estado.trazos) ? estado.trazos : [])
+            .filter(t => Array.isArray(t.puntos) && t.puntos.length >= 2)
+            .map((t, i) => ({
+                id: typeof t.id === "number" ? t.id : i + 1,
+                nombre: t.nombre || `Trazo ${i + 1}`,
+                color: t.color || TRAZO_COLORES[i % TRAZO_COLORES.length],
+                puntos: t.puntos.map(p => [+p[0], +p[1]])
+            }));
+
+        asignacionesManuales = (estado && estado.manuales) || {};
+        siguienteIdTrazo = trazos.reduce((m, t) => Math.max(m, t.id), 0) + 1;
+
+        dibujarTrazos();
+        renderizarListaTrazos();
+    }
+
+    function guardarTrazosLocal() {
+        try {
+            localStorage.setItem(CLAVE_TRAZOS_ACTUAL, JSON.stringify(estadoTrazos()));
+        } catch (err) {
+            // Sin almacenamiento (modo privado): los trazos duran mientras la página esté abierta.
+        }
+    }
+
+    function leerGuardados() {
+        try {
+            return JSON.parse(localStorage.getItem(CLAVE_TRAZOS_GUARDADOS) || "{}") || {};
+        } catch (err) {
+            return {};
+        }
+    }
+
+    function renderizarSelectGuardados() {
+
+        const guardados = leerGuardados();
+        const nombres = Object.keys(guardados).sort();
+
+        selTrazosGuardados.innerHTML =
+            `<option value="">📂 Trazos guardados${nombres.length ? ` (${nombres.length})` : ""}…</option>` +
+            nombres.map(n => `<option value="${escapeHTML(n)}">${escapeHTML(n)} · ${guardados[n].trazos.length} trazo(s)</option>`).join("") +
+            (nombres.length ? `<option value="__borrar__">🗑️ Borrar un conjunto guardado…</option>` : "");
+    }
+
+    document.getElementById("btnGuardarTrazos").addEventListener("click", () => {
+
+        if (!trazos.length) {
+            statusElement.textContent = "⚠️ No hay trazos para guardar.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        const nombre = prompt("Nombre para este conjunto de trazos (por ejemplo: Caldas – recibos):", "");
+        if (!nombre || !nombre.trim()) return;
+
+        const guardados = leerGuardados();
+
+        if (guardados[nombre.trim()] && !confirm(`Ya existe "${nombre.trim()}". ¿Reemplazarlo?`)) return;
+
+        guardados[nombre.trim()] = estadoTrazos();
+
+        try {
+            localStorage.setItem(CLAVE_TRAZOS_GUARDADOS, JSON.stringify(guardados));
+            statusElement.textContent = `💾 Trazos guardados como "${nombre.trim()}" en este celular.`;
+            statusElement.className = "status success";
+        } catch (err) {
+            statusElement.textContent = "❌ No se pudo guardar en este navegador. Usa 📤 Exportar KML para no perderlos.";
+            statusElement.className = "status error";
+        }
+
+        renderizarSelectGuardados();
+    });
+
+    selTrazosGuardados.addEventListener("change", () => {
+
+        const valor = selTrazosGuardados.value;
+        selTrazosGuardados.value = "";
+
+        if (!valor) return;
+
+        const guardados = leerGuardados();
+
+        if (valor === "__borrar__") {
+            const nombre = prompt("Escribe el nombre exacto del conjunto que quieres borrar:\n" + Object.keys(guardados).join("\n"), "");
+            if (nombre && guardados[nombre]) {
+                delete guardados[nombre];
+                try { localStorage.setItem(CLAVE_TRAZOS_GUARDADOS, JSON.stringify(guardados)); } catch (err) { /* sin almacenamiento */ }
+                statusElement.textContent = `🗑️ Conjunto "${nombre}" borrado.`;
+                statusElement.className = "status";
+            }
+            renderizarSelectGuardados();
+            return;
+        }
+
+        if (!guardados[valor]) return;
+
+        if (edicion.activa) terminarEdicion(false);
+
+        aplicarEstadoTrazos(guardados[valor]);
+        guardarTrazosLocal();
+
+        statusElement.textContent = `📂 Cargados ${trazos.length} trazo(s) de "${valor}".`;
+        statusElement.className = "status success";
+
+        if (serp.activa && serp.modo === "trazos") ordenarPorTrazos(true);
+
+        if (trazos.length) {
+            const limites = L.latLngBounds(trazos[0].puntos);
+            trazos.forEach(t => t.puntos.forEach(p => limites.extend(p)));
+            map.fitBounds(limites, { padding: [40, 40] });
+        }
+    });
+
+    document.getElementById("btnBorrarTrazos").addEventListener("click", () => {
+
+        if (!trazos.length) return;
+        if (!confirm("¿Borrar todos los trazos de la pantalla? (Los conjuntos guardados no se borran.)")) return;
+
+        if (edicion.activa) terminarEdicion(false);
+
+        trazos = [];
+        asignacionesManuales = {};
+        guardarTrazosLocal();
+        dibujarTrazos();
+        renderizarListaTrazos();
+
+        if (serp.activa && serp.modo === "trazos") limpiarRutasSerpentina(true);
+    });
+
+    // ---------- Exportar / importar KML ----------
+
+    document.getElementById("btnExportarTrazos").addEventListener("click", () => {
+
+        if (!trazos.length) {
+            statusElement.textContent = "⚠️ No hay trazos para exportar.";
+            statusElement.className = "status warning";
+            return;
+        }
+
+        // KML usa el color al revés: aabbggrr.
+        const colorKML = hex => {
+            const h = hex.replace("#", "");
+            return "ff" + h.slice(4, 6) + h.slice(2, 4) + h.slice(0, 2);
+        };
+
+        const xml = s => String(s).replace(/[<>&"]/g, ch => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[ch]));
+
+        const kml =
+            '<?xml version="1.0" encoding="UTF-8"?>\n' +
+            '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Trazos GPS Track</name>\n' +
+            trazos.map((t, i) =>
+                `<Style id="t${i}"><LineStyle><color>${colorKML(t.color)}</color><width>4</width></LineStyle></Style>\n` +
+                `<Placemark><name>${xml(t.nombre)}</name><description>Orden ${i + 1}</description>` +
+                `<styleUrl>#t${i}</styleUrl><LineString><tessellate>1</tessellate><coordinates>` +
+                t.puntos.map(p => `${p[1].toFixed(7)},${p[0].toFixed(7)},0`).join(" ") +
+                `</coordinates></LineString></Placemark>`
+            ).join("\n") +
+            "\n</Document></kml>";
+
+        const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+        const enlace = document.createElement("a");
+        const fecha = new Date().toISOString().slice(0, 10);
+
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = `trazos_${fecha}.kml`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        setTimeout(() => URL.revokeObjectURL(enlace.href), 3000);
+
+        statusElement.textContent = `📤 ${trazos.length} trazo(s) exportados a KML.`;
+        statusElement.className = "status success";
+    });
+
+    document.getElementById("btnImportarTrazos").addEventListener("click", () => inputTrazos.click());
+
+    inputTrazos.addEventListener("change", async (evento) => {
+
+        const archivo = evento.target.files[0];
+        inputTrazos.value = "";
+        if (!archivo) return;
+
+        try {
+
+            if (typeof toGeoJSON === "undefined") {
+                throw new Error("no cargó la librería para leer KML (revisa tu conexión)");
+            }
+
+            const bytes = new Uint8Array(await archivo.slice(0, 4).arrayBuffer());
+            let texto;
+
+            if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+                const zip = await JSZip.loadAsync(await archivo.arrayBuffer());
+                const nombreKml = Object.keys(zip.files).find(n => n.toLowerCase().endsWith(".kml"));
+                if (!nombreKml) throw new Error("el KMZ no contiene ningún .kml");
+                texto = await zip.files[nombreKml].async("string");
+            } else {
+                texto = await archivo.text();
+            }
+
+            const geo = toGeoJSON.kml(new DOMParser().parseFromString(texto, "text/xml"));
+            const nuevos = [];
+
+            const agregarLinea = (coords, props) => {
+                if (!coords || coords.length < 2) return;
+                const i = trazos.length + nuevos.length;
+                nuevos.push({
+                    id: siguienteIdTrazo++,
+                    nombre: (props && props.name) || `Trazo ${i + 1}`,
+                    color: (props && /^#[0-9a-f]{6}$/i.test(props.stroke || "")) ? props.stroke : TRAZO_COLORES[i % TRAZO_COLORES.length],
+                    puntos: coords.map(c => [c[1], c[0]])
+                });
+            };
+
+            const recorrer = (geom, props) => {
+                if (!geom) return;
+                if (geom.type === "LineString") agregarLinea(geom.coordinates, props);
+                else if (geom.type === "MultiLineString") geom.coordinates.forEach(c => agregarLinea(c, props));
+                else if (geom.type === "GeometryCollection") geom.geometries.forEach(g => recorrer(g, props));
+            };
+
+            (geo.features || []).forEach(f => recorrer(f.geometry, f.properties));
+
+            if (!nuevos.length) throw new Error("el archivo no tiene líneas (trazos)");
+
+            if (edicion.activa) terminarEdicion(false);
+
+            if (trazos.length && confirm(`Se encontraron ${nuevos.length} trazo(s).\n\nAceptar = REEMPLAZAR los trazos actuales.\nCancelar = AGREGARLOS a los actuales.`)) {
+                trazos = [];
+                asignacionesManuales = {};
+            }
+
+            trazos = trazos.concat(nuevos);
+
+            guardarTrazosLocal();
+            dibujarTrazos();
+            renderizarListaTrazos();
+
+            const limites = L.latLngBounds(nuevos[0].puntos);
+            nuevos.forEach(t => t.puntos.forEach(p => limites.extend(p)));
+            map.fitBounds(limites, { padding: [40, 40] });
+
+            statusElement.textContent = `📥 ${nuevos.length} trazo(s) importados.`;
+            statusElement.className = "status success";
+
+            reordenarSiHaceFalta();
+
+        } catch (err) {
+            statusElement.textContent = "❌ No se pudieron importar los trazos: " + err.message;
+            statusElement.className = "status error";
+        }
+    });
+
+    // ---------- Al abrir la página: recuperar los últimos trazos ----------
+
+    try {
+        const guardado = localStorage.getItem(CLAVE_TRAZOS_ACTUAL);
+        if (guardado) aplicarEstadoTrazos(JSON.parse(guardado));
+    } catch (err) {
+        // Sin almacenamiento o datos dañados: se empieza sin trazos.
+    }
+
+    renderizarListaTrazos();
+    renderizarSelectGuardados();
 
     // ==========================================================
     // MOSTRAR POSICIÓN DEL USUARIO
