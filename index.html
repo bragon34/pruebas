@@ -387,6 +387,72 @@
         opacity: 0.7;
     }
 
+    .grupo-ruta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        margin: 10px 0 6px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border-left: 6px solid var(--c);
+        cursor: pointer;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        user-select: none;
+    }
+
+    .grupo-ruta:first-child {
+        margin-top: 0;
+    }
+
+    .grupo-ruta .titulo {
+        flex: 1;
+        font-weight: bold;
+        font-size: 13px;
+        color: #1f2937;
+    }
+
+    .grupo-ruta .conteo {
+        font-size: 12px;
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    .grupo-ruta button {
+        border: none;
+        background: white;
+        border-radius: 6px;
+        padding: 4px 7px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .grupo-ruta button:hover {
+        background: #e2e8f0;
+    }
+
+    .grupo-ruta.oculta {
+        opacity: 0.55;
+        background: #f8fafc;
+    }
+
+    .client-item.en-ruta {
+        border-left: 4px solid var(--c);
+    }
+
+    .barra-lista-rutas {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .ruta-chip.oculta {
+        opacity: 0.55;
+    }
+
     .flecha-icon div {
         width: 0;
         height: 0;
@@ -515,7 +581,7 @@
     <div class="layout">
 
         <div class="panel">
-            <h2>📋 Clientes (ordenados por distancia)</h2>
+            <h2 id="tituloLista">📋 Clientes (ordenados por distancia)</h2>
             <div class="client-list" id="clientList">
                 <div class="empty-hint">
                     Carga un archivo CSV para ver la lista de clientes aquí.
@@ -1367,6 +1433,11 @@
             // se atenúan para que no tapen el recorrido.
             c.linea.setStyle({ opacity: serp.activa ? 0.12 : 0.6 });
 
+            // Si el cliente pertenece a una ruta oculta, su línea tampoco se muestra.
+            if (c.rutaSerp && c.rutaSerp.visible === false && map.hasLayer(c.linea)) {
+                map.removeLayer(c.linea);
+            }
+
             if (c.marker) {
                 c.marker.bindPopup(
                     `<b>👤 ${escapeHTML(c.nombre)}</b>` +
@@ -1429,7 +1500,7 @@
             return;
         }
 
-        clientListElement.innerHTML = listaFiltrada.map(c => {
+        const htmlCliente = (c) => {
 
             if (c.valido) {
 
@@ -1462,8 +1533,12 @@
                         </div>
                     `;
 
+                const estiloRuta = c.rutaSerp
+                    ? ` en-ruta" style="--c:${c.rutaSerp.color}`
+                    : "";
+
                 return `
-                    <div class="client-item${claseVisitado}" data-nombre="${escapeHTML(c.nombre)}">
+                    <div class="client-item${claseVisitado}${estiloRuta}" data-nombre="${escapeHTML(c.nombre)}">
                         <div class="name">${c.visitado ? "✅" : "👤"} ${escapeHTML(c.nombre)}</div>
                         <div class="dist">${c.visitado ? "Visitado" : numeroParada + distTexto}</div>
                         ${acciones}
@@ -1479,8 +1554,17 @@
                     </div>
                 `;
             }
+        };
 
-        }).join("");
+        document.getElementById("tituloLista").textContent = serp.activa
+            ? "📋 Clientes por ruta"
+            : "📋 Clientes (ordenados por distancia)";
+
+        clientListElement.innerHTML = serp.activa
+            ? htmlListaPorRutas(listaFiltrada, htmlCliente)
+            : listaFiltrada.map(htmlCliente).join("");
+
+        conectarEventosGruposLista();
 
         // Click en un cliente: centrar el mapa y abrir su popup.
         clientListElement.querySelectorAll(".client-item[data-nombre]").forEach(item => {
@@ -1515,11 +1599,13 @@
                     cliente.visitado = true;
                     actualizarIconoParada(cliente);
                     renderizarListaClientes();
-                    enfocarSiguientePendiente();
+                    if (serp.activa) renderizarResumenRutas();
+                    enfocarSiguientePendiente(cliente.rutaSerp);
                 } else if (accion === "deshacer") {
                     cliente.visitado = false;
                     actualizarIconoParada(cliente);
                     renderizarListaClientes();
+                    if (serp.activa) renderizarResumenRutas();
                 }
             });
         });
@@ -1581,11 +1667,25 @@
 
     // Centra el mapa y hace scroll en la lista hacia el siguiente cliente
     // pendiente (no visitado), para continuar el recorrido sin buscarlo.
-    function enfocarSiguientePendiente() {
+    function enfocarSiguientePendiente(ruta) {
 
-        const siguiente = clientListElement.querySelector(
-            ".client-item[data-nombre]:not(.visitado)"
-        );
+        let siguiente = null;
+
+        // Con rutas serpentina: seguir con la próxima parada de la MISMA ruta.
+        if (ruta) {
+            const proximo = ruta.clientes.find(c => !c.visitado);
+            if (proximo) {
+                siguiente = clientListElement.querySelector(
+                    `.client-item[data-nombre="${CSS.escape(proximo.nombre)}"]`
+                );
+            }
+        }
+
+        if (!siguiente) {
+            siguiente = clientListElement.querySelector(
+                ".client-item[data-nombre]:not(.visitado)"
+            );
+        }
 
         if (!siguiente) return;
 
@@ -1623,7 +1723,8 @@
     const serp = {
         activa: false,
         rutas: [],
-        capas: L.layerGroup().addTo(map)
+        capas: L.layerGroup().addTo(map),
+        sinRutaColapsada: false
     };
 
     const COLORES_RUTA = [
@@ -1928,6 +2029,9 @@
             r.color = r.tipo === "aislados" ? COLOR_AISLADOS : COLORES_RUTA[i % COLORES_RUTA.length];
             r.clientes = r.puntos.map(p => p.cliente);
             r.metros = 0;
+            r.visible = true;      // se ve en el mapa y en la lista
+            r.colapsada = false;   // solo afecta la lista
+            r.infoTexto = "";
 
             r.clientes.forEach((c, k) => {
                 c.rutaSerp = r;
@@ -2049,12 +2153,14 @@
     function renderizarResumenRutas() {
 
         rutasResumenElement.innerHTML = serp.rutas.map((r, i) => `
-            <div class="ruta-chip" style="--c:${r.color}">
+            <div class="ruta-chip${r.visible ? "" : " oculta"}" style="--c:${r.color}">
                 <strong>${r.tipo === "aislados" ? "📍" : "🐍"} ${escapeHTML(r.nombre)}</strong>
-                ${r.clientes.length} parada(s) · ${formatearDistancia(r.metros)}
+                ${r.clientes.filter(c => !c.visitado).length}/${r.clientes.length} pendientes · ${formatearDistancia(r.metros)}
                 ${r.tipo === "serpentina" ? ` · ${r.franjas} franja(s)` : " · puntos lejos del resto"}
-                <span class="ruta-info" id="rutaInfo${i}"></span>
+                <span class="ruta-info" id="rutaInfo${i}">${escapeHTML(r.infoTexto || "")}</span>
                 <div class="ruta-acciones">
+                    <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="visible">${r.visible ? "🙈 Ocultar" : "👁️ Mostrar"}</button>
+                    <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="solo">🎯 Solo esta</button>
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="ver">🔍 Ver</button>
                     <button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="calles">🛣️ Trazar recorrido</button>
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="maps">🧭 Google Maps</button>
@@ -2069,7 +2175,14 @@
                 const r = serp.rutas[+boton.getAttribute("data-ruta")];
                 const accion = boton.getAttribute("data-accion");
 
-                if (accion === "ver") {
+                const indice = +boton.getAttribute("data-ruta");
+
+                if (accion === "visible") {
+                    cambiarVisibilidadRuta(indice, !r.visible);
+                } else if (accion === "solo") {
+                    mostrarSoloRuta(indice);
+                } else if (accion === "ver") {
+                    if (!r.visible) cambiarVisibilidadRuta(indice, true);
                     map.fitBounds(r.linea.getBounds(), { padding: [40, 40], maxZoom: 18 });
                 } else if (accion === "calles") {
                     seguirCalles(r, +boton.getAttribute("data-ruta"), boton);
@@ -2135,7 +2248,8 @@
                 opacity: 0.85
             }).addTo(r.capa);
 
-            info.textContent = ` · ${modo.texto}: ${formatearDistancia(metros)}, ${formatearDuracion(segundos)}`;
+            r.infoTexto = ` · ${modo.texto}: ${formatearDistancia(metros)}, ${formatearDuracion(segundos)}`;
+            info.textContent = r.infoTexto;
 
         } catch (err) {
 
@@ -2176,6 +2290,203 @@
         window.open(url, "_blank");
     }
 
+    // ---------- Mostrar / ocultar rutas (mapa + lista) ----------
+
+    function aplicarVisibilidadRuta(r) {
+
+        if (r.visible) {
+            if (!serp.capas.hasLayer(r.capa)) serp.capas.addLayer(r.capa);
+        } else {
+            serp.capas.removeLayer(r.capa);
+        }
+
+        r.clientes.forEach(c => {
+            [c.marker, c.linea].forEach(capa => {
+                if (!capa) return;
+                if (r.visible) {
+                    if (!map.hasLayer(capa)) capa.addTo(map);
+                } else if (map.hasLayer(capa)) {
+                    map.removeLayer(capa);
+                }
+            });
+        });
+    }
+
+    function refrescarVistaRutas() {
+        renderizarResumenRutas();
+        renderizarListaClientes();
+    }
+
+    function cambiarVisibilidadRuta(indice, visible) {
+
+        const r = serp.rutas[indice];
+        if (!r) return;
+
+        r.visible = visible;
+        if (visible) r.colapsada = false;
+
+        aplicarVisibilidadRuta(r);
+        refrescarVistaRutas();
+    }
+
+    function mostrarSoloRuta(indice) {
+
+        serp.rutas.forEach((r, k) => {
+            r.visible = k === indice;
+            if (r.visible) r.colapsada = false;
+            aplicarVisibilidadRuta(r);
+        });
+
+        const r = serp.rutas[indice];
+        if (r) map.fitBounds(r.linea.getBounds(), { padding: [40, 40], maxZoom: 18 });
+
+        refrescarVistaRutas();
+    }
+
+    function mostrarTodasLasRutas() {
+
+        serp.rutas.forEach(r => {
+            r.visible = true;
+            aplicarVisibilidadRuta(r);
+        });
+
+        refrescarVistaRutas();
+    }
+
+    // ---------- Lista lateral agrupada por ruta ----------
+
+    function htmlListaPorRutas(lista, htmlCliente) {
+
+        const hayOcultas = serp.rutas.some(r => !r.visible);
+        const todasColapsadas = serp.rutas.every(r => r.colapsada || !r.visible);
+
+        let html = `
+            <div class="barra-lista-rutas">
+                ${hayOcultas ? '<button class="btn-mini btn-deshacer" data-lista="todas">👁️ Mostrar todas</button>' : ""}
+                <button class="btn-mini btn-deshacer" data-lista="${todasColapsadas ? "expandir" : "contraer"}">
+                    ${todasColapsadas ? "▾ Expandir todas" : "▸ Contraer todas"}
+                </button>
+            </div>
+        `;
+
+        const grupo = (clave, nombre, icono, color, items, total, visible, colapsada) => {
+
+            const pendientes = items.filter(c => c.valido && !c.visitado).length;
+            const flecha = !visible ? "🙈" : colapsada ? "▸" : "▾";
+
+            let h = `
+                <div class="grupo-ruta${visible ? "" : " oculta"}" style="--c:${color}" data-grupo="${clave}">
+                    <span>${flecha}</span>
+                    <span class="titulo">${icono} ${escapeHTML(nombre)}</span>
+                    <span class="conteo">${pendientes} pend. · ${total}</span>
+                    ${clave !== "sin" ? `
+                        <button data-grupo-accion="visible" data-grupo="${clave}" title="${visible ? "Ocultar esta ruta" : "Mostrar esta ruta"}">${visible ? "🙈" : "👁️"}</button>
+                        <button data-grupo-accion="solo" data-grupo="${clave}" title="Ver solo esta ruta">🎯</button>
+                    ` : ""}
+                </div>
+            `;
+
+            if (visible && !colapsada) {
+                h += items.length
+                    ? items.map(htmlCliente).join("")
+                    : '<div class="empty-hint">Ningún cliente coincide con la búsqueda.</div>';
+            }
+
+            return h;
+        };
+
+        serp.rutas.forEach((r, i) => {
+            const items = lista.filter(c => c.rutaSerp === r);
+            html += grupo(
+                String(i),
+                r.nombre,
+                r.tipo === "aislados" ? "📍" : "🐍",
+                r.color,
+                items,
+                r.clientes.length,
+                r.visible,
+                r.colapsada
+            );
+        });
+
+        // Clientes que no entraron en ninguna ruta (ya visitados o fuera del filtro al generar).
+        const sinRuta = lista.filter(c => !c.rutaSerp);
+
+        if (sinRuta.length) {
+            html += grupo(
+                "sin", "Sin ruta", "⚪", "#cbd5e1",
+                sinRuta, sinRuta.length, true, serp.sinRutaColapsada
+            );
+        }
+
+        return html;
+    }
+
+    function conectarEventosGruposLista() {
+
+        if (!serp.activa) return;
+
+        // Clic en el encabezado: contraer / expandir el grupo en la lista.
+        clientListElement.querySelectorAll(".grupo-ruta").forEach(encabezado => {
+
+            encabezado.addEventListener("click", () => {
+
+                const clave = encabezado.getAttribute("data-grupo");
+
+                if (clave === "sin") {
+                    serp.sinRutaColapsada = !serp.sinRutaColapsada;
+                } else {
+                    const r = serp.rutas[+clave];
+                    if (!r) return;
+                    if (!r.visible) {
+                        cambiarVisibilidadRuta(+clave, true);
+                        return;
+                    }
+                    r.colapsada = !r.colapsada;
+                }
+
+                renderizarListaClientes();
+            });
+        });
+
+        // Botones 🙈 / 👁️ / 🎯 del encabezado.
+        clientListElement.querySelectorAll("button[data-grupo-accion]").forEach(boton => {
+
+            boton.addEventListener("click", (evento) => {
+
+                evento.stopPropagation();
+
+                const indice = +boton.getAttribute("data-grupo");
+                const accion = boton.getAttribute("data-grupo-accion");
+
+                if (accion === "visible") {
+                    cambiarVisibilidadRuta(indice, !serp.rutas[indice].visible);
+                } else if (accion === "solo") {
+                    mostrarSoloRuta(indice);
+                }
+            });
+        });
+
+        // Barra superior: mostrar todas / contraer / expandir.
+        clientListElement.querySelectorAll("button[data-lista]").forEach(boton => {
+
+            boton.addEventListener("click", () => {
+
+                const accion = boton.getAttribute("data-lista");
+
+                if (accion === "todas") {
+                    mostrarTodasLasRutas();
+                    return;
+                }
+
+                const colapsar = accion === "contraer";
+                serp.rutas.forEach(r => { if (r.visible) r.colapsada = colapsar; });
+                serp.sinRutaColapsada = colapsar;
+                renderizarListaClientes();
+            });
+        });
+    }
+
     // ---------- Quitar rutas ----------
 
     function limpiarRutasSerpentina(avisar) {
@@ -2184,6 +2495,8 @@
 
         clientes.forEach(c => {
             if (c.rutaSerp) {
+                if (c.marker && !map.hasLayer(c.marker)) c.marker.addTo(map);
+                if (c.linea && !map.hasLayer(c.linea)) c.linea.addTo(map);
                 c.rutaSerp = null;
                 c.paradaSerp = null;
                 c.ordenRuta = null;
