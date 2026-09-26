@@ -325,6 +325,14 @@
         gap: 6px;
     }
 
+    .serp-config select {
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        max-width: 100%;
+    }
+
     .serp-config input[type="number"] {
         width: 80px;
         padding: 6px 8px;
@@ -464,6 +472,13 @@
             </label>
             <label>
                 <input type="checkbox" id="serpDesdeGPS" checked> Empezar desde mi ubicación
+            </label>
+            <label title="Define por dónde se trazan las rutas en 'Seguir calles', 'Ruta óptima' y Google Maps.">
+                Recorrido
+                <select id="modoRecorrido">
+                    <option value="pie" selected>🚶 A pie (incluye peatonales, escaleras y senderos)</option>
+                    <option value="carro">🚗 En carro / moto</option>
+                </select>
             </label>
         </div>
 
@@ -1189,6 +1204,34 @@
 
     btnRutaOptima.addEventListener("click", calcularRutaOptima);
 
+    // ==========================================================
+    // MODO DE RECORRIDO: A PIE O EN CARRO
+    // ==========================================================
+    //
+    // router.project-osrm.org solo calcula rutas para carro (ignora
+    // peatonales, escaleras y senderos). Para ir a pie se usa el servidor
+    // OSRM de FOSSGIS (el mismo que usa openstreetmap.org para "A pie"),
+    // que sí tiene en cuenta las vías peatonales. Ambos son gratuitos y
+    // sin API key.
+
+    const SERVIDORES_RUTA = {
+        pie: {
+            base: "https://routing.openstreetmap.de/routed-foot",
+            google: "walking",
+            texto: "a pie"
+        },
+        carro: {
+            base: "https://router.project-osrm.org",
+            google: "driving",
+            texto: "en carro"
+        }
+    };
+
+    function modoRecorrido() {
+        const sel = document.getElementById("modoRecorrido");
+        return SERVIDORES_RUTA[sel ? sel.value : "pie"] || SERVIDORES_RUTA.pie;
+    }
+
     async function calcularRutaOptima() {
 
         if (userLat === null || userLon === null) {
@@ -1227,7 +1270,7 @@
             .join(";");
 
         const url =
-            "https://router.project-osrm.org/trip/v1/driving/" + coordenadas +
+            modoRecorrido().base + "/trip/v1/driving/" + coordenadas +
             "?source=first&roundtrip=false&geometries=geojson&overview=full";
 
         try {
@@ -1275,7 +1318,7 @@
             statusElement.textContent =
                 "✅ Ruta óptima calculada: " + objetivos.length + " paradas · " +
                 formatearDistancia(viaje.distance) + " · " +
-                formatearDuracion(viaje.duration);
+                formatearDuracion(viaje.duration) + " " + modoRecorrido().texto;
 
             statusElement.className = "status success";
 
@@ -2013,7 +2056,7 @@
                 <span class="ruta-info" id="rutaInfo${i}"></span>
                 <div class="ruta-acciones">
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="ver">🔍 Ver</button>
-                    <button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="calles">🛣️ Seguir calles</button>
+                    <button class="btn-mini btn-visitar" data-ruta="${i}" data-accion="calles">🛣️ Trazar recorrido</button>
                     <button class="btn-mini btn-deshacer" data-ruta="${i}" data-accion="maps">🧭 Google Maps</button>
                 </div>
             </div>
@@ -2049,14 +2092,16 @@
             return;
         }
 
+        const modo = modoRecorrido();
+
         boton.disabled = true;
-        info.textContent = " · calculando calles...";
+        info.textContent = ` · calculando recorrido ${modo.texto}...`;
 
         try {
 
             // El servidor gratuito acepta un número limitado de puntos por
             // consulta, así que se pide por tramos que se empalman.
-            const TRAMO = 80;
+            const TRAMO = 50;
             let geometria = [];
             let metros = 0;
             let segundos = 0;
@@ -2065,7 +2110,7 @@
 
                 const parte = puntos.slice(s, s + TRAMO);
                 const url =
-                    "https://router.project-osrm.org/route/v1/driving/" +
+                    modo.base + "/route/v1/driving/" +
                     parte.map(p => p[0] + "," + p[1]).join(";") +
                     "?overview=full&geometries=geojson";
 
@@ -2090,7 +2135,7 @@
                 opacity: 0.85
             }).addTo(r.capa);
 
-            info.textContent = ` · por calles: ${formatearDistancia(metros)}, ${formatearDuracion(segundos)} en carro`;
+            info.textContent = ` · ${modo.texto}: ${formatearDistancia(metros)}, ${formatearDuracion(segundos)}`;
 
         } catch (err) {
 
@@ -2117,7 +2162,7 @@
         const destino = pendientes[pendientes.length - 1];
         const intermedias = pendientes.slice(0, -1);
 
-        let url = "https://www.google.com/maps/dir/?api=1&travelmode=driving" +
+        let url = "https://www.google.com/maps/dir/?api=1&travelmode=" + modoRecorrido().google +
             "&destination=" + ll(destino);
 
         if (userLat !== null && userLon !== null) {
