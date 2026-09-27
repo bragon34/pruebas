@@ -1106,9 +1106,10 @@
             </label>
             <label class="campo">Tamaño de cada imagen
                 <select id="optPagina">
-                    <option value="larga" selected>Una sola columna, lo más larga posible</option>
-                    <option value="a4">Hoja vertical en varias columnas (2480×3508)</option>
-                    <option value="a4h">Hoja horizontal en varias columnas (3508×2480)</option>
+                    <option value="a4col" selected>Hoja A4 vertical, una columna (2480×3508)</option>
+                    <option value="a4">Hoja A4 vertical, varias columnas</option>
+                    <option value="a4h">Hoja A4 horizontal, varias columnas (3508×2480)</option>
+                    <option value="larga">Tira larga, una columna (sin tamaño fijo)</option>
                 </select>
             </label>
             <label class="campo">Disposición
@@ -1135,6 +1136,7 @@
             <label class="campo"><input type="checkbox" id="optContraste" checked> Blanco y negro con contraste (mejor para OCR)</label>
             <label class="campo" title="Título de la imagen, encabezados de columna (N°, CÓDIGO…) y, en la ficha, CÓDIGO:, NOMBRE:… antes de cada dato. Desmárcalo para que la imagen solo tenga los datos."><input type="checkbox" id="optRotulos" checked> Títulos y rótulos</label>
             <label class="campo" title="Número del recibo a la izquierda de cada dato (01, 02, 03…). Sin él, los datos quedan en el mismo orden de captura en todas las imágenes."><input type="checkbox" id="optNumeros" checked> Números de recibo</label>
+            <label class="campo" title="En la hoja A4 de una columna, agranda los datos para que ocupen el ancho de la hoja. Recomendado para la IA de texto del celular."><input type="checkbox" id="optLetraGrande" checked> Letra grande (para la IA del celular)</label>
             <label class="campo"><input type="checkbox" id="optSeparar" checked> Separar collages por formato</label>
         </div>
         <div class="toolbar">
@@ -1217,7 +1219,7 @@
 
     // Se comparte con la página OCR: si ya marcaste zonas allá, aparecen aquí.
     const CLAVE_PLANTILLA = "ocrRecibos.plantilla";
-    const CLAVE_OPCIONES = "recortes.opciones.v3";
+    const CLAVE_OPCIONES = "recortes.opciones.v4";
     const CLAVE_FORMATOS = "recortes.formatos";
 
     // Lado máximo al guardar cada recibo (px). Alto para que los recortes salgan nítidos.
@@ -1295,7 +1297,7 @@
     })();
 
     // Opciones del collage recordadas en el dispositivo.
-    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optSeparar"];
+    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optLetraGrande", "optSeparar"];
 
     try {
         const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
@@ -2601,6 +2603,56 @@
     const ANCHO_ROTULO = 210;   // columna de rótulos en la disposición "ficha"
     const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
 
+    // Recorta el blanco alrededor del texto de un recorte (deja un pequeño margen).
+    // Si no encuentra texto claro, devuelve el recorte sin cambios.
+    function recortarAlTexto(c) {
+
+        const w = c.width, h = c.height;
+        if (w < 8 || h < 8) return c;
+
+        const d = c.getContext("2d").getImageData(0, 0, w, h).data;
+        const gris = new Uint8Array(w * h);
+        const hist = new Uint32Array(256);
+
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+            const v = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+            gris[j] = v;
+            hist[v]++;
+        }
+
+        // Tinta = claramente más oscuro que el papel.
+        const percentil = q => { let a = 0; for (let v = 0; v < 256; v++) { a += hist[v]; if (a >= gris.length * q) return v; } return 255; };
+        const oscuro = percentil(0.02), claro = percentil(0.9);
+        if (claro - oscuro < 60) return c;
+        const umbral = (oscuro + claro) / 2;
+
+        const filas = new Uint32Array(h), cols = new Uint32Array(w);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (gris[y * w + x] < umbral) { filas[y]++; cols[x]++; }
+            }
+        }
+
+        // Ignora puntitos sueltos (ruido).
+        const minFila = Math.max(2, Math.round(w * 0.004)), minCol = Math.max(2, Math.round(h * 0.02));
+        let y0 = 0, y1 = h - 1, x0 = 0, x1 = w - 1;
+        while (y0 < h && filas[y0] < minFila) y0++;
+        while (y1 > y0 && filas[y1] < minFila) y1--;
+        while (x0 < w && cols[x0] < minCol) x0++;
+        while (x1 > x0 && cols[x1] < minCol) x1--;
+        if (y0 >= y1 || x0 >= x1) return c;
+
+        const m = Math.round(Math.max(6, (y1 - y0) * 0.12));
+        x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m);
+        x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
+
+        const r = document.createElement("canvas");
+        r.width = x1 - x0 + 1;
+        r.height = y1 - y0 + 1;
+        r.getContext("2d").drawImage(c, x0, y0, r.width, r.height, 0, 0, r.width, r.height);
+        return r;
+    }
+
     // Límites para que el celular pueda crear la imagen (los navegadores móviles
     // no permiten lienzos gigantes).
     const MAX_ALTO_COLLAGE = 14000;
@@ -2609,9 +2661,10 @@
     // Tamaños de imagen: la página se llena columna por columna y, cuando ya no cabe
     // ningún dato más, se crea la siguiente imagen.
     const PAGINAS = {
-        a4:    { w: 2480, h: 3508 },   // hoja vertical (A4 a 300 ppp)
-        a4h:   { w: 3508, h: 2480 },   // hoja horizontal
-        larga: null                    // una sola columna, tan alta como se pueda
+        a4col: { w: 2480, h: 3508, unaColumna: true },   // A4 vertical (300 ppp), una columna
+        a4:    { w: 2480, h: 3508 },                     // A4 vertical, varias columnas
+        a4h:   { w: 3508, h: 2480 },                     // A4 horizontal, varias columnas
+        larga: null                                      // tira de una columna, sin tamaño fijo
     };
     const MARGEN = 30;          // margen de la página
     const HUECO_COLUMNAS = 50;  // espacio entre columnas de datos
@@ -2657,17 +2710,19 @@
                 g.imageSmoothingQuality = "high";
                 g.drawImage(c, 0, 0, e.width, e.height);
                 if (opciones.contraste) mejorarContraste(e);
-                celdas[z.id] = e;
+                // En los collages por dato se quita el blanco sobrante alrededor del texto,
+                // así caben más datos por hoja y la letra se puede agrandar.
+                celdas[z.id] = compacto ? recortarAlTexto(e) : e;
             });
 
             let alto;
             if (ficha) {
                 alto = zonasUsadas.reduce((s, z) => s + Math.max(celdas[z.id] ? celdas[z.id].height : 0, rotulos ? 44 : 0) + 12, 0) - 12 + 2 * pad;
             } else {
-                alto = Math.max(compacto ? 44 : 60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * pad;
+                alto = Math.max(compacto ? 24 : 60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * pad;
             }
 
-            filas.push({ numero: it.numero, archivo: it.recibo.archivo, celdas, alto: Math.max(compacto ? 60 : 90, alto) });
+            filas.push({ numero: it.numero, archivo: it.recibo.archivo, celdas, alto: Math.max(compacto ? (conNumeros ? 56 : 30) : 90, alto) });
         }
 
         // 2) Ancho de un bloque (número + datos).
@@ -2680,10 +2735,20 @@
         const pagina = PAGINAS[opciones.pagina] || null;
         let PW, PH, columnas;
 
+        // Si el bloque no cabe a lo ancho de la hoja, la hoja se dibuja más grande
+        // y al final se reduce a la medida A4 exacta.
+        let escalaHoja = 1;
+
         if (pagina) {
-            PW = Math.max(pagina.w, anchoBloque + 2 * MARGEN);
-            PH = pagina.h;
-            columnas = Math.max(1, Math.floor((PW - 2 * MARGEN + HUECO_COLUMNAS) / (anchoBloque + HUECO_COLUMNAS)));
+            // Letra grande: en la hoja de una columna, los datos se agrandan para llenar el ancho
+            // (hasta 2,5 veces). Así las IA de OCR del celular sí detectan el texto.
+            const ampliarHasta = pagina.unaColumna && opciones.letraGrande ? 2.5 : 1;
+            escalaHoja = Math.min(ampliarHasta, (pagina.w - 2 * MARGEN) / anchoBloque);
+            PW = Math.round(pagina.w / escalaHoja);
+            PH = Math.round(pagina.h / escalaHoja);
+            columnas = pagina.unaColumna
+                ? 1
+                : Math.max(1, Math.floor((PW - 2 * MARGEN + HUECO_COLUMNAS) / (anchoBloque + HUECO_COLUMNAS)));
         } else {
             PW = anchoBloque + 2 * MARGEN;
             PH = Math.min(MAX_ALTO_COLLAGE, Math.floor(MAX_AREA_COLLAGE / PW));
@@ -2724,11 +2789,10 @@
             const cols = paginas[p].cols;
             const filasPagina = cols.flat();
 
-            // La última hoja se recorta a lo que realmente ocupa.
+            // Con hoja A4 todas las imágenes tienen la medida exacta; la tira larga se recorta a lo que ocupa.
             const altoCols = Math.max(...cols.map(c => c.reduce((s, f) => s + f.alto, 0)));
-            const H = Math.min(PH, inicioFilas + altoCols + MARGEN);
-            const W = pagina ? Math.min(PW, 2 * MARGEN + cols.length * anchoBloque + (cols.length - 1) * HUECO_COLUMNAS) : PW;
-            const Wfinal = pagina && paginas.length > 1 ? PW : W;   // hojas llenas conservan su ancho
+            const H = pagina ? PH : Math.min(PH, inicioFilas + altoCols + MARGEN);
+            const Wfinal = PW;
 
             const c = document.createElement("canvas");
             c.width = Wfinal;
@@ -2783,7 +2847,8 @@
 
                 col.forEach((f, k) => {
 
-                    if (k % 2 === 1) {
+                    // Sin números la hoja queda limpia: solo los datos, sin sombreado ni líneas.
+                    if (conNumeros && k % 2 === 1) {
                         g.fillStyle = "#f1f5f9";
                         g.fillRect(x0, y, anchoBloque, f.alto);
                     }
@@ -2821,8 +2886,10 @@
                         });
                     }
 
-                    g.fillStyle = "#94a3b8";
-                    g.fillRect(x0, y + f.alto - 2, anchoBloque, 2);
+                    if (conNumeros) {
+                        g.fillStyle = "#94a3b8";
+                        g.fillRect(x0, y + f.alto - 2, anchoBloque, 2);
+                    }
                     y += f.alto;
                 });
 
@@ -2839,7 +2906,18 @@
                 }
             });
 
-            const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
+            // Reducir a la medida A4 exacta si la hoja se dibujó más grande.
+            let salida = c;
+            if (pagina && escalaHoja !== 1) {
+                salida = document.createElement("canvas");
+                salida.width = pagina.w;
+                salida.height = pagina.h;
+                const gs = salida.getContext("2d");
+                gs.imageSmoothingQuality = "high";
+                gs.drawImage(c, 0, 0, pagina.w, pagina.h);
+            }
+
+            const blob = await new Promise(res => salida.toBlob(res, tipo, 0.92));
 
             resultado.push({
                 blob,
@@ -2852,8 +2930,8 @@
                 formato: info.formato || "",
                 campo: info.campo ? info.campo.rotulo : "",
                 archivos: filasPagina.map(f => f.archivo),
-                ancho: Wfinal,
-                alto: H
+                ancho: salida.width,
+                alto: salida.height
             });
         }
 
@@ -2882,6 +2960,7 @@
             formato: $("optFormato").value,
             rotulos: $("optRotulos").checked,
             numeros: $("optNumeros").checked,
+            letraGrande: $("optLetraGrande").checked,
             separar: $("optSeparar").checked
         };
 
