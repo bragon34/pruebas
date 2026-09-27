@@ -823,6 +823,8 @@
                     <button class="btn-mini" id="btnAnterior">◀ Anterior</button>
                     <span id="textoRecibo">—</span>
                     <button class="btn-mini" id="btnSiguiente">Siguiente ▶</button>
+                    <button class="btn-mini" id="btnGirarUno" title="Girar este recibo 90° a la derecha">↻ Girar este</button>
+                    <button class="btn-mini" id="btnGirarTodos" title="Girar todos los recibos 90° a la derecha">↻ Girar todos</button>
                 </div>
                 <div id="pruebaLectura" class="nota"></div>
             </div>
@@ -904,6 +906,7 @@
             <button type="button" class="cam-btn" id="camNitidez">🔍 Nitidez</button>
             <button type="button" class="cam-btn" id="camLinterna" hidden>🔦 Linterna</button>
             <button type="button" class="cam-btn" id="camAuto">🤖 Auto: no</button>
+            <button type="button" class="cam-btn" id="camGiro">🔄 Giro: 0°</button>
         </div>
 
         <div class="cam-aviso" id="camAviso" hidden></div>
@@ -1403,6 +1406,85 @@
     }
 
     // ==========================================================
+    // GIRAR FOTOS
+    // ==========================================================
+
+    // Gira un lienzo 90, 180 o 270 grados a la derecha.
+    function rotarCanvas(fuente, grados) {
+
+        grados = ((grados % 360) + 360) % 360;
+        if (!grados) return fuente;
+
+        const c = document.createElement("canvas");
+        const acostado = grados % 180 !== 0;
+        c.width = acostado ? fuente.height : fuente.width;
+        c.height = acostado ? fuente.width : fuente.height;
+
+        const g = c.getContext("2d");
+        g.translate(c.width / 2, c.height / 2);
+        g.rotate((grados * Math.PI) / 180);
+        g.drawImage(fuente, -fuente.width / 2, -fuente.height / 2);
+        return c;
+    }
+
+    // Una zona (en fracciones) después de girar la imagen 90° a la derecha, n veces.
+    function rotarZona(z, grados) {
+        let r = { ...z };
+        for (let k = 0; k < (((grados % 360) + 360) % 360) / 90; k++) {
+            r = { x: 1 - r.y - r.h, y: r.x, w: r.h, h: r.w };
+        }
+        return r;
+    }
+
+    async function rotarRecibo(recibo, grados) {
+
+        const img = await createImageBitmap(recibo.blob);
+        const girado = rotarCanvas(img, grados);
+        img.close && img.close();
+
+        recibo.blob = await new Promise(res => girado.toBlob(res, "image/jpeg", 0.92));
+        recibo.ancho = girado.width;
+        recibo.alto = girado.height;
+        recibo.tira = null;
+
+        // Si el recibo tiene zonas propias, giran con la imagen.
+        if (recibo.zonas) {
+            Object.keys(recibo.zonas).forEach(k => { recibo.zonas[k] = rotarZona(recibo.zonas[k], grados); });
+        }
+    }
+
+    $("btnGirarUno").addEventListener("click", async () => {
+        const r = recibos[indiceVista];
+        if (!r || leyendo) return;
+        $("btnGirarUno").disabled = true;
+        await rotarRecibo(r, 90);
+        $("btnGirarUno").disabled = false;
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+    $("btnGirarTodos").addEventListener("click", async () => {
+
+        if (!recibos.length || leyendo) return;
+
+        leyendo = true;
+        $("btnGirarTodos").disabled = true;
+
+        for (let i = 0; i < recibos.length; i++) {
+            setStatus($("statusRecibos"), `↻ Girando recibo ${i + 1} de ${recibos.length}…`);
+            await rotarRecibo(recibos[i], 90);
+        }
+
+        leyendo = false;
+        $("btnGirarTodos").disabled = false;
+        setStatus($("statusRecibos"), `↻ ${recibos.length} recibo(s) girados 90° a la derecha.`, "success");
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+    // ==========================================================
     // LISTA DE CAPTURAS
     // ==========================================================
 
@@ -1432,6 +1514,7 @@
                     <small>${escapeHTML(r.archivo)}${r.zonas ? " · ✂️ zonas propias" : ""}</small>
                 </div>
                 <div class="captura-acciones">
+                    <button type="button" class="btn-mini" data-accion="girar" title="Girar 90° a la derecha">↻</button>
                     <button type="button" class="btn-mini" data-accion="zona">✂️ Zonas</button>
                     <button type="button" class="btn-mini" data-accion="quitar">🗑️</button>
                 </div>
@@ -1468,6 +1551,15 @@
         const i = +b.closest(".captura").getAttribute("data-i");
         const r = recibos[i];
         if (!r) return;
+
+        if (b.getAttribute("data-accion") === "girar") {
+            b.disabled = true;
+            await rotarRecibo(r, 90);
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            if (i === indiceVista) mostrarRecibo();
+            return;
+        }
 
         if (b.getAttribute("data-accion") === "quitar") {
             recibos.splice(i, 1);
@@ -1822,6 +1914,7 @@
         forma: 0,
         cuadricula: true,
         linterna: false,
+        giro: (() => { try { return (parseInt(localStorage.getItem("recortes.giroCamara"), 10) || 0) % 360; } catch (e) { return 0; } })(),
         auto: false,
         verificarNitidez: true,
         marco: null,               // recuadro en píxeles CSS de la pantalla
@@ -1847,7 +1940,9 @@
 
     function aspectoActual() {
         const f = FORMAS[cam.forma];
-        return f.id === "plantilla" ? aspectoPlantilla() : f.r;
+        const a = f.id === "plantilla" ? aspectoPlantilla() : f.r;
+        // Con giro de 90° o 270°, la hoja derecha se ve acostada en la cámara.
+        return cam.giro % 180 ? 1 / a : a;
     }
 
     // ---------- Abrir / cerrar ----------
@@ -2041,7 +2136,9 @@
         // Zonas de la plantilla (segmentos).
         {
             ZONAS.forEach(z => {
-                const r = plantilla[z.id];
+                // Las zonas están marcadas sobre el recibo derecho; en la cámara se muestran
+                // giradas al revés del giro que se le aplicará a la foto.
+                const r = plantilla[z.id] ? rotarZona(plantilla[z.id], (360 - cam.giro) % 360) : null;
                 if (!r) return;
                 const zx = x + r.x * w, zy = y + r.y * h, zw = r.w * w, zh = r.h * h;
                 g.fillStyle = z.color + "33";
@@ -2089,6 +2186,24 @@
         $("camAuto").textContent = cam.auto ? "🤖 Auto: sí" : "🤖 Auto: no";
         $("camNitidez").classList.toggle("on", cam.verificarNitidez);
     }
+
+    function pintarGiro() {
+        $("camGiro").textContent = `🔄 Giro: ${cam.giro}°`;
+        $("camGiro").classList.toggle("on", cam.giro !== 0);
+    }
+
+    $("camGiro").addEventListener("click", () => {
+        cam.giro = (cam.giro + 90) % 360;
+        try { localStorage.setItem("recortes.giroCamara", String(cam.giro)); } catch (e) { /* sin almacenamiento */ }
+        pintarGiro();
+        calcularMarco();
+        dibujarSegmentacion();
+        mostrarAvisoCamara(cam.giro
+            ? `Cada foto se girará ${cam.giro}° a la derecha al guardarla. Alinea el recibo con las zonas tal como se ven.`
+            : "Las fotos se guardan sin girar.", 3500);
+    });
+
+    pintarGiro();
 
     $("camForma").addEventListener("click", () => {
         cam.forma = (cam.forma + 1) % FORMAS.length;
@@ -2242,7 +2357,7 @@
         if (navigator.vibrate) navigator.vibrate(60);
 
         const numero = recibos.length + 1;
-        await agregarRecibo(c, `Cámara · recibo ${numero}`);
+        await agregarRecibo(cam.giro ? rotarCanvas(c, cam.giro) : c, `Cámara · recibo ${numero}`);
         const recibo = recibos[recibos.length - 1];
         marcarCollagesDesactualizados();
         actualizarContador();
