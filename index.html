@@ -1137,6 +1137,7 @@
             <label class="campo" title="Título de la imagen, encabezados de columna (N°, CÓDIGO…) y, en la ficha, CÓDIGO:, NOMBRE:… antes de cada dato. Desmárcalo para que la imagen solo tenga los datos."><input type="checkbox" id="optRotulos" checked> Títulos y rótulos</label>
             <label class="campo" title="Número del recibo a la izquierda de cada dato (01, 02, 03…). Sin él, los datos quedan en el mismo orden de captura en todas las imágenes."><input type="checkbox" id="optNumeros" checked> Números de recibo</label>
             <label class="campo" title="En la hoja A4 de una columna, agranda los datos para que ocupen el ancho de la hoja. Recomendado para la IA de texto del celular."><input type="checkbox" id="optLetraGrande" checked> Letra grande (para la IA del celular)</label>
+            <label class="campo" title="En los collages por dato: quita las líneas de las casillas impresas y el fondo gris, recorta el blanco sobrante y deja todas las letras del mismo alto. Muy recomendado con fotos reales."><input type="checkbox" id="optLimpiar" checked> Limpiar para OCR (quita bordes y fondo)</label>
             <label class="campo"><input type="checkbox" id="optSeparar" checked> Separar collages por formato</label>
         </div>
         <div class="toolbar">
@@ -1297,7 +1298,7 @@
     })();
 
     // Opciones del collage recordadas en el dispositivo.
-    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optLetraGrande", "optSeparar"];
+    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optLetraGrande", "optLimpiar", "optSeparar"];
 
     try {
         const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
@@ -2603,6 +2604,196 @@
     const ANCHO_ROTULO = 210;   // columna de rótulos en la disposición "ficha"
     const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
 
+    // ---------- Limpieza para OCR ----------
+    //
+    // Pensada para fotos reales: quita el fondo gris (blanco y negro puro),
+    // borra las líneas de las casillas impresas del recibo, recorta el blanco
+    // sobrante y deja todas las letras del mismo alto. Así cualquier OCR
+    // (Tesseract, Google, la IA del celular) lee mucho mejor.
+
+    // Umbral automático entre tinta y papel (método de Otsu).
+    function umbralOtsu(gris) {
+        const hist = new Float64Array(256);
+        for (let i = 0; i < gris.length; i++) hist[gris[i]]++;
+        const total = gris.length;
+        let suma = 0;
+        for (let v = 0; v < 256; v++) suma += v * hist[v];
+        let sumB = 0, wB = 0, mejor = 0, umbral = 128;
+        for (let v = 0; v < 256; v++) {
+            wB += hist[v];
+            if (!wB) continue;
+            const wF = total - wB;
+            if (!wF) break;
+            sumB += v * hist[v];
+            const mB = sumB / wB, mF = (suma - sumB) / wF;
+            const entre = wB * wF * (mB - mF) * (mB - mF);
+            if (entre > mejor) { mejor = entre; umbral = v; }
+        }
+        return umbral;
+    }
+
+    // Borra tramos de tinta muy largos (líneas de casillas), horizontales o verticales.
+    function borrarLineas(tinta, w, h, horizontal, largoMin) {
+        const n1 = horizontal ? h : w, n2 = horizontal ? w : h;
+        for (let a = 0; a < n1; a++) {
+            let b = 0;
+            while (b < n2) {
+                const idx = horizontal ? a * w + b : b * w + a;
+                if (!tinta[idx]) { b++; continue; }
+                let fin = b;
+                while (fin < n2 && tinta[horizontal ? a * w + fin : fin * w + a]) fin++;
+                if (fin - b >= largoMin) {
+                    for (let k = b; k < fin; k++) tinta[horizontal ? a * w + k : k * w + a] = 0;
+                }
+                b = fin;
+            }
+        }
+    }
+
+    // altoLinea: alto final de cada renglón de texto, en píxeles.
+    function limpiarParaOCR(c, altoLinea) {
+
+        const w = c.width, h = c.height;
+        if (w < 6 || h < 6) return c;
+
+        const d = c.getContext("2d").getImageData(0, 0, w, h).data;
+        const gris = new Uint8Array(w * h);
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+            gris[j] = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+        }
+
+        // 1) Blanco y negro puro.
+        const umbral = umbralOtsu(gris);
+        const tinta = new Uint8Array(w * h);
+        for (let i = 0; i < gris.length; i++) tinta[i] = gris[i] < umbral ? 1 : 0;
+
+        // 2) Por fila: cuánta tinta tiene y cuántos cambios tinta/papel.
+        //    Las letras tienen muchos cambios; las líneas de la casilla, mucha tinta y pocos cambios.
+        const fraccion = new Float32Array(h), cambios = new Uint32Array(h);
+        for (let y = 0; y < h; y++) {
+            let n = 0, t = 0;
+            for (let x = 0; x < w; x++) {
+                const v = tinta[y * w + x];
+                n += v;
+                if (x && v !== tinta[y * w + x - 1]) t++;
+            }
+            fraccion[y] = n / w;
+            cambios[y] = t;
+        }
+
+        const esLinea = y => fraccion[y] > 0.5;
+        const esTexto = y => cambios[y] >= 6 && fraccion[y] > 0.03 && !esLinea(y);
+
+        // Filas-línea horizontales: se borran.
+        for (let y = 0; y < h; y++) if (esLinea(y)) tinta.fill(0, y * w, (y + 1) * w);
+
+        // Columnas-línea verticales (bordes de la casilla): tinta en más del 60 % del alto.
+        for (let x = 0; x < w; x++) {
+            let n = 0;
+            for (let y = 0; y < h; y++) n += tinta[y * w + x];
+            if (n > h * 0.6) {
+                for (let xx = Math.max(0, x - 1); xx <= Math.min(w - 1, x + 1); xx++) {
+                    for (let y = 0; y < h; y++) tinta[y * w + xx] = 0;
+                }
+            }
+        }
+
+        // 3) Renglones de texto: bandas de filas con texto (se toleran huecos de 2 filas).
+        const bandas = [];
+        let ini = -1, prev = -10;
+        for (let y = 0; y < h; y++) {
+            if (!esTexto(y)) continue;
+            if (y - prev > 3) {
+                if (ini >= 0) bandas.push([ini, prev]);
+                ini = y;
+            }
+            prev = y;
+        }
+        if (ini >= 0) bandas.push([ini, prev]);
+
+        let utiles = bandas.filter(([a, b]) => b - a + 1 >= Math.max(4, h * 0.08));
+        // Sin renglón claro (foto muy borrosa): se usa todo el alto, igual queda limpio.
+        if (!utiles.length) utiles = [[0, h - 1]];
+
+        let y0 = Math.max(0, utiles[0][0] - 2);
+        let y1 = Math.min(h - 1, utiles[utiles.length - 1][1] + 2);
+
+        // Restos de línea dentro de la banda: filas con bastante tinta y pocos cambios.
+        for (let y = y0; y <= y1; y++) {
+            let n = 0, t = 0;
+            for (let x = 0; x < w; x++) {
+                const v = tinta[y * w + x];
+                n += v;
+                if (x && v !== tinta[y * w + x - 1]) t++;
+            }
+            if (t <= 4 && n > w * 0.12) tinta.fill(0, y * w, (y + 1) * w);
+        }
+
+        // 4) Recorte horizontal a las columnas con tinta.
+        const altoBanda = y1 - y0 + 1;
+        const minCol = Math.max(2, Math.round(altoBanda * 0.08));
+        let x0 = 0, x1 = w - 1;
+        const tintaCol = x => { let n = 0; for (let y = y0; y <= y1; y++) n += tinta[y * w + x]; return n; };
+        while (x0 < w && tintaCol(x0) < minCol) x0++;
+        while (x1 > x0 && tintaCol(x1) < minCol) x1--;
+        if (x0 >= x1) return recortarAlTexto(c);
+
+        // Restos de borde en los extremos: trazos muy delgados, o que solo ocupan el
+        // borde de arriba/abajo del renglón, separados del texto por un espacio.
+        const grupos = [];
+        for (let x = x0; x <= x1; x++) {
+            if (tintaCol(x) < minCol) continue;
+            const ultimo = grupos[grupos.length - 1];
+            if (ultimo && x - ultimo.fin <= 1) ultimo.fin = x;
+            else grupos.push({ ini: x, fin: x });
+        }
+        const esResto = gr => {
+            const ancho = gr.fin - gr.ini + 1;
+            let yMin = y1, yMax = y0;
+            for (let x = gr.ini; x <= gr.fin; x++) {
+                for (let y = y0; y <= y1; y++) {
+                    if (tinta[y * w + x]) { if (y < yMin) yMin = y; if (y > yMax) yMax = y; }
+                }
+            }
+            const soloBorde = (yMax - yMin + 1) < altoBanda * 0.3 &&
+                (yMin > y0 + altoBanda * 0.65 || yMax < y0 + altoBanda * 0.35);
+            return ancho <= Math.max(3, altoBanda * 0.1) || soloBorde;
+        };
+        while (grupos.length > 1 && esResto(grupos[0]) && grupos[1].ini - grupos[0].fin > altoBanda * 0.3) grupos.shift();
+        while (grupos.length > 1 && esResto(grupos[grupos.length - 1]) && grupos[grupos.length - 1].ini - grupos[grupos.length - 2].fin > altoBanda * 0.3) grupos.pop();
+        if (grupos.length) { x0 = grupos[0].ini; x1 = grupos[grupos.length - 1].fin; }
+
+        // 5) Imagen limpia (tinta negra sobre blanco)…
+        const anchoCaja = x1 - x0 + 1, altoCaja = y1 - y0 + 1;
+        const limpio = document.createElement("canvas");
+        limpio.width = anchoCaja;
+        limpio.height = altoCaja;
+        const gl = limpio.getContext("2d");
+        const img = gl.createImageData(anchoCaja, altoCaja);
+        for (let y = 0; y < altoCaja; y++) {
+            for (let x = 0; x < anchoCaja; x++) {
+                const v = tinta[(y + y0) * w + (x + x0)] ? 0 : 255;
+                const k = (y * anchoCaja + x) * 4;
+                img.data[k] = img.data[k + 1] = img.data[k + 2] = v;
+                img.data[k + 3] = 255;
+            }
+        }
+        gl.putImageData(img, 0, 0);
+
+        // …escalada para que cada renglón quede del mismo alto, con margen blanco.
+        const esc = Math.max(0.3, Math.min(6, (altoLinea * utiles.length) / altoCaja));
+        const margen = Math.round(altoLinea * 0.3);
+        const r = document.createElement("canvas");
+        r.width = Math.max(1, Math.round(anchoCaja * esc)) + 2 * margen;
+        r.height = Math.max(1, Math.round(altoCaja * esc)) + 2 * margen;
+        const g = r.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, r.width, r.height);
+        g.imageSmoothingQuality = "high";
+        g.drawImage(limpio, margen, margen, r.width - 2 * margen, r.height - 2 * margen);
+        return r;
+    }
+
     // Recorta el blanco alrededor del texto de un recorte (deja un pequeño margen).
     // Si no encuentra texto claro, devuelve el recorte sin cambios.
     function recortarAlTexto(c) {
@@ -2688,7 +2879,8 @@
         const compacto = !!info.campo;
         const anchoNum = !conNumeros ? 0 : compacto ? 118 : ANCHO_NUM;
         const pad = compacto ? 8 : PAD;
-        const anchoDe = z => compacto ? Math.round(z.ancho * 0.8) : z.ancho;
+        const anchosCampo = {};   // ancho real de cada campo cuando los recortes se limpian
+        const anchoDe = z => anchosCampo[z.id] || (compacto ? Math.round(z.ancho * 0.8) : z.ancho);
 
         // 1) Recortes escalados al mismo ancho por campo (todas las filas parejas).
         const filas = [];
@@ -2701,6 +2893,13 @@
             zonasUsadas.forEach(z => {
                 const c = recs[z.id];
                 if (!c) return;
+
+                // Collage por dato con limpieza: sin bordes, blanco y negro y letra pareja.
+                if (compacto && opciones.limpiar) {
+                    celdas[z.id] = limpiarParaOCR(c, opciones.letraGrande ? 80 : 56);
+                    return;
+                }
+
                 const anchoCol = ficha ? ANCHO_FICHA : anchoDe(z);
                 const esc = Math.min(compacto ? 2.2 : 3, anchoCol / c.width);
                 const e = document.createElement("canvas");
@@ -2726,6 +2925,11 @@
         }
 
         // 2) Ancho de un bloque (número + datos).
+        const anchoLimpio = compacto && opciones.limpiar
+            ? Math.max(200, ...filas.map(f => Math.max(0, ...Object.values(f.celdas).map(e => e.width))))
+            : 0;
+        if (anchoLimpio) zonasUsadas.forEach(z => { anchosCampo[z.id] = anchoLimpio; });
+
         const anchoContenido = ficha
             ? (rotulos ? ANCHO_ROTULO : 0) + ANCHO_FICHA
             : zonasUsadas.reduce((s, z) => s + anchoDe(z), 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
@@ -2742,7 +2946,7 @@
         if (pagina) {
             // Letra grande: en la hoja de una columna, los datos se agrandan para llenar el ancho
             // (hasta 2,5 veces). Así las IA de OCR del celular sí detectan el texto.
-            const ampliarHasta = pagina.unaColumna && opciones.letraGrande ? 2.5 : 1;
+            const ampliarHasta = pagina.unaColumna && opciones.letraGrande && !(compacto && opciones.limpiar) ? 2.5 : 1;
             escalaHoja = Math.min(ampliarHasta, (pagina.w - 2 * MARGEN) / anchoBloque);
             PW = Math.round(pagina.w / escalaHoja);
             PH = Math.round(pagina.h / escalaHoja);
@@ -2961,6 +3165,7 @@
             rotulos: $("optRotulos").checked,
             numeros: $("optNumeros").checked,
             letraGrande: $("optLetraGrande").checked,
+            limpiar: $("optLimpiar").checked,
             separar: $("optSeparar").checked
         };
 
