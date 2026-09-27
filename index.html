@@ -1103,11 +1103,14 @@
                     <option value="15" selected>15</option>
                     <option value="20">20</option>
                     <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100000">Todos en una imagen</option>
                 </select>
             </label>
             <label class="campo">Disposición
                 <select id="optDisposicion">
-                    <option value="fila" selected>Una fila por recibo: campos lado a lado (datos de 1 renglón)</option>
+                    <option value="campo" selected>Un collage por dato: todos los códigos juntos, todos los nombres juntos…</option>
+                    <option value="fila">Una fila por recibo: campos lado a lado (datos de 1 renglón)</option>
                     <option value="apilado">Ficha por recibo: campos uno debajo de otro (datos de varias líneas)</option>
                 </select>
             </label>
@@ -2593,11 +2596,20 @@
     const ANCHO_ROTULO = 210;   // columna de rótulos en la disposición "ficha"
     const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
 
+    // Límites para que el celular pueda crear la imagen (los navegadores móviles
+    // no permiten lienzos gigantes). Si un collage no cabe, se parte en varias imágenes.
+    const MAX_ALTO_COLLAGE = 14000;
+    const MAX_AREA_COLLAGE = 16000000;
+
     // lote: [{ recibo, numero }]
+    // info: { indice, total, formato, campo? }  (campo = collage de un solo dato)
+    // Devuelve una lista de collages (normalmente uno; varios si no cabe).
     async function construirCollage(lote, info, opciones) {
 
         // Solo salen los campos que tienen recuadro en algún recibo del lote (en orden fijo).
-        const zonasUsadas = ZONAS.filter(z => lote.some(it => zonasDe(it.recibo)[z.id]));
+        let zonasUsadas = ZONAS.filter(z => lote.some(it => zonasDe(it.recibo)[z.id]));
+        if (info.campo) zonasUsadas = zonasUsadas.filter(z => z.id === info.campo.id);
+
         const ficha = opciones.disposicion === "apilado";
         const rotulos = ficha && opciones.rotulos;
 
@@ -2633,114 +2645,157 @@
                 alto = Math.max(60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * PAD;
             }
 
-            filas.push({ numero: it.numero, celdas, alto: Math.max(90, alto) });
+            filas.push({ numero: it.numero, archivo: it.recibo.archivo, celdas, alto: Math.max(info.campo ? 80 : 90, alto) });
         }
 
-        // 2) Tamaño del lienzo.
+        // 2) Ancho del lienzo.
         const anchoContenido = ficha
             ? (rotulos ? ANCHO_ROTULO : 0) + ANCHO_FICHA
             : zonasUsadas.reduce((s, z) => s + z.ancho, 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
 
         const W = ANCHO_NUM + anchoContenido + 2 * PAD;
-        const H = ALTO_CABECERA + filas.reduce((s, f) => s + f.alto, 0) + PAD;
 
-        const c = document.createElement("canvas");
-        c.width = W;
-        c.height = H;
-        const g = c.getContext("2d");
+        // 3) Partir en varias imágenes si no cabe en una.
+        const altoMax = Math.min(MAX_ALTO_COLLAGE, Math.floor(MAX_AREA_COLLAGE / W));
+        const partes = [];
+        let actual = [], acumulado = ALTO_CABECERA + PAD;
 
-        g.fillStyle = "#ffffff";
-        g.fillRect(0, 0, W, H);
-
-        // 3) Cabecera.
-        const nums = lote.map(it => it.numero);
-        g.fillStyle = "#111827";
-        g.font = "bold 30px Arial";
-        g.fillText(
-            `Lote ${info.indice + 1} de ${info.total}` +
-            (info.formato ? ` · ${info.formato}` : "") +
-            ` · ${lote.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`,
-            PAD, 40);
-
-        g.font = "bold 22px Arial";
-        g.fillStyle = "#475569";
-        g.fillText("N°", PAD + 40, 82);
-
-        if (!ficha) {
-            let x = ANCHO_NUM + PAD;
-            zonasUsadas.forEach(z => {
-                g.fillText(z.rotulo, x, 82);
-                x += z.ancho + HUECO;
-            });
-        } else {
-            g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), ANCHO_NUM + PAD, 82);
-        }
-
-        g.fillStyle = "#111827";
-        g.fillRect(0, ALTO_CABECERA - 4, W, 3);
-
-        // 4) Filas.
-        let y = ALTO_CABECERA;
-
-        filas.forEach((f, k) => {
-
-            if (k % 2 === 1) {
-                g.fillStyle = "#f8fafc";
-                g.fillRect(0, y, W, f.alto);
+        filas.forEach(f => {
+            if (actual.length && acumulado + f.alto > altoMax) {
+                partes.push(actual);
+                actual = [];
+                acumulado = ALTO_CABECERA + PAD;
             }
-
-            dibujarNumero(g, numeroFormateado(f.numero), 0, y, ANCHO_NUM, f.alto);
-
-            if (ficha) {
-                let yy = y + PAD;
-                zonasUsadas.forEach(z => {
-                    const e = f.celdas[z.id];
-                    const altoCampo = Math.max(e ? e.height : 0, rotulos ? 44 : 0);
-                    let x = ANCHO_NUM + PAD;
-                    if (rotulos) {
-                        g.fillStyle = "#111827";
-                        g.font = "bold 26px Arial";
-                        g.fillText(z.rotulo + ":", x, yy + Math.min(altoCampo, 60) / 2 + 9);
-                        x += ANCHO_ROTULO;
-                    }
-                    if (e) g.drawImage(e, x, yy);
-                    yy += altoCampo + 12;
-                });
-            } else {
-                let x = ANCHO_NUM + PAD;
-                zonasUsadas.forEach(z => {
-                    const e = f.celdas[z.id];
-                    if (e) g.drawImage(e, x, y + PAD);
-                    x += z.ancho + HUECO;
-                });
-            }
-
-            g.fillStyle = "#94a3b8";
-            g.fillRect(0, y + f.alto - 2, W, 2);
-            y += f.alto;
+            actual.push(f);
+            acumulado += f.alto;
         });
-
-        // Línea vertical tras la columna del número.
-        g.fillStyle = "#cbd5e1";
-        g.fillRect(ANCHO_NUM - 2, ALTO_CABECERA, 2, H - ALTO_CABECERA);
+        if (actual.length) partes.push(actual);
 
         const tipo = opciones.formato === "png" ? "image/png" : "image/jpeg";
-        const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
         const ext = opciones.formato === "png" ? "png" : "jpg";
-        const slug = info.formato
-            ? "_" + info.formato.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-            : "";
+        const slugDe = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const resultado = [];
 
-        return {
-            blob,
-            url: URL.createObjectURL(blob),
-            nombre: `collage_${String(info.indice + 1).padStart(2, "0")}${slug}.${ext}`,
-            numeros: nums,
-            formato: info.formato || "",
-            archivos: lote.map(it => it.recibo.archivo),
-            ancho: W,
-            alto: H
-        };
+        for (let p = 0; p < partes.length; p++) {
+
+            const filasParte = partes[p];
+            const H = ALTO_CABECERA + filasParte.reduce((s, f) => s + f.alto, 0) + PAD;
+
+            const c = document.createElement("canvas");
+            c.width = W;
+            c.height = H;
+            const g = c.getContext("2d");
+
+            g.fillStyle = "#ffffff";
+            g.fillRect(0, 0, W, H);
+
+            // Cabecera.
+            const nums = filasParte.map(f => f.numero);
+            const titulo =
+                (info.campo ? `${info.campo.rotulo} · ` : "") +
+                `Lote ${info.indice + 1} de ${info.total}` +
+                (partes.length > 1 ? ` (parte ${p + 1} de ${partes.length})` : "") +
+                (info.formato ? ` · ${info.formato}` : "") +
+                ` · ${filasParte.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`;
+
+            // El título se achica si la imagen es angosta (por ejemplo, la de códigos).
+            let tamTitulo = 30;
+            g.font = `bold ${tamTitulo}px Arial`;
+            while (tamTitulo > 14 && g.measureText(titulo).width > W - 2 * PAD) {
+                tamTitulo--;
+                g.font = `bold ${tamTitulo}px Arial`;
+            }
+            g.fillStyle = "#111827";
+            g.fillText(titulo, PAD, 40);
+
+            g.font = "bold 22px Arial";
+            g.fillStyle = "#475569";
+            g.fillText("N°", PAD + 40, 82);
+
+            if (!ficha) {
+                let x = ANCHO_NUM + PAD;
+                zonasUsadas.forEach(z => {
+                    g.fillText(z.rotulo, x, 82);
+                    x += z.ancho + HUECO;
+                });
+            } else {
+                g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), ANCHO_NUM + PAD, 82);
+            }
+
+            g.fillStyle = "#111827";
+            g.fillRect(0, ALTO_CABECERA - 4, W, 3);
+
+            // Filas.
+            let y = ALTO_CABECERA;
+
+            filasParte.forEach((f, k) => {
+
+                if (k % 2 === 1) {
+                    g.fillStyle = "#f8fafc";
+                    g.fillRect(0, y, W, f.alto);
+                }
+
+                dibujarNumero(g, numeroFormateado(f.numero), 0, y, ANCHO_NUM, f.alto);
+
+                if (ficha) {
+                    let yy = y + PAD;
+                    zonasUsadas.forEach(z => {
+                        const e = f.celdas[z.id];
+                        const altoCampo = Math.max(e ? e.height : 0, rotulos ? 44 : 0);
+                        let x = ANCHO_NUM + PAD;
+                        if (rotulos) {
+                            g.fillStyle = "#111827";
+                            g.font = "bold 26px Arial";
+                            g.fillText(z.rotulo + ":", x, yy + Math.min(altoCampo, 60) / 2 + 9);
+                            x += ANCHO_ROTULO;
+                        }
+                        if (e) g.drawImage(e, x, yy);
+                        yy += altoCampo + 12;
+                    });
+                } else {
+                    let x = ANCHO_NUM + PAD;
+                    zonasUsadas.forEach(z => {
+                        const e = f.celdas[z.id];
+                        if (e) {
+                            g.drawImage(e, x, y + (info.campo ? (f.alto - e.height) / 2 : PAD));
+                        } else if (info.campo) {
+                            // Recibo sin este dato: se deja la fila marcada para no descuadrar la numeración.
+                            g.fillStyle = "#94a3b8";
+                            g.font = "bold 30px Arial";
+                            g.fillText("—", x, y + f.alto / 2 + 10);
+                        }
+                        x += z.ancho + HUECO;
+                    });
+                }
+
+                g.fillStyle = "#94a3b8";
+                g.fillRect(0, y + f.alto - 2, W, 2);
+                y += f.alto;
+            });
+
+            // Línea vertical tras la columna del número.
+            g.fillStyle = "#cbd5e1";
+            g.fillRect(ANCHO_NUM - 2, ALTO_CABECERA, 2, H - ALTO_CABECERA);
+
+            const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
+
+            resultado.push({
+                blob,
+                url: URL.createObjectURL(blob),
+                nombre: `collage_${String(info.indice + 1).padStart(2, "0")}` +
+                    (info.formato ? "_" + slugDe(info.formato) : "") +
+                    (info.campo ? "_" + slugDe(info.campo.rotulo) : "") +
+                    (partes.length > 1 ? `_parte${p + 1}` : "") + `.${ext}`,
+                numeros: nums,
+                formato: info.formato || "",
+                campo: info.campo ? info.campo.rotulo : "",
+                archivos: filasParte.map(f => f.archivo),
+                ancho: W,
+                alto: H
+            });
+        }
+
+        return resultado;
     }
 
     $("btnGenerar").addEventListener("click", async () => {
@@ -2790,16 +2845,34 @@
             }
         });
 
+        const porCampo = opciones.disposicion === "campo";
+
         try {
             for (let k = 0; k < lotes.length; k++) {
-                setStatus($("statusCollages"), `🧩 Armando collage ${k + 1} de ${lotes.length}…`);
+
+                setStatus($("statusCollages"), `🧩 Armando lote ${k + 1} de ${lotes.length}…`);
                 $("barra").style.width = `${(k / lotes.length) * 100}%`;
-                collages.push(await construirCollage(lotes[k].items, { indice: k, total: lotes.length, formato: lotes[k].formato }, opciones));
+
+                const info = { indice: k, total: lotes.length, formato: lotes[k].formato };
+
+                if (porCampo) {
+                    // Un collage por dato: todos los códigos juntos, todos los nombres juntos, etc.
+                    const campos = ZONAS.filter(z => lotes[k].items.some(it => zonasDe(it.recibo)[z.id]));
+                    for (const z of campos) {
+                        setStatus($("statusCollages"), `🧩 Lote ${k + 1} de ${lotes.length}: ${z.rotulo.toLowerCase()}…`);
+                        collages.push(...await construirCollage(lotes[k].items, { ...info, campo: z }, { ...opciones, disposicion: "fila" }));
+                    }
+                } else {
+                    collages.push(...await construirCollage(lotes[k].items, info, opciones));
+                }
             }
             $("barra").style.width = "100%";
             setStatus($("statusCollages"),
-                `✅ ${collages.length} collage(s) listos con ${recibos.length} recibos (${opciones.porCollage} por imagen` +
-                (grupos.length > 1 ? `, separados en ${grupos.length} formatos` : "") + ").", "success");
+                `✅ ${collages.length} imagen(es) listas con ${recibos.length} recibos` +
+                (porCampo ? " (una por cada dato: código, nombre, dirección, teléfono)" : "") +
+                (grupos.length > 1 ? `, separadas en ${grupos.length} formatos` : "") +
+                (collages.some(c => /_parte\d/.test(c.nombre)) ? ". Algunas se partieron en varias imágenes porque no cabían en una sola" : "") +
+                ".", "success");
         } catch (err) {
             setStatus($("statusCollages"), "❌ No se pudieron armar los collages: " + err.message, "error");
         }
@@ -2823,7 +2896,7 @@
             <div class="collage">
                 <a href="${c.url}" target="_blank" rel="noopener"><img src="${c.url}" alt="Collage ${i + 1}"></a>
                 <div class="collage-pie">
-                    <span><b>Collage ${i + 1}</b>${c.formato ? ` · ${escapeHTML(c.formato)}` : ""} · ${c.numeros.length} recibos<br>
+                    <span><b>${c.campo ? escapeHTML(c.campo) : `Collage ${i + 1}`}</b>${c.formato ? ` · ${escapeHTML(c.formato)}` : ""} · ${c.numeros.length} recibos<br>
                     <small>N° ${numeroFormateado(Math.min(...c.numeros))}–${numeroFormateado(Math.max(...c.numeros))} · ${c.ancho}×${c.alto} px · ${(c.blob.size / 1024 / 1024).toFixed(1)} MB</small></span>
                     <button type="button" class="btn-mini" data-collage="${i}">⬇️ Descargar</button>
                 </div>
@@ -2851,16 +2924,16 @@
     // Índice: qué recibo quedó en qué collage y en qué fila (sirve para cuadrar el OCR).
     function indiceCSV() {
         const q = s => /[",\n]/.test(String(s)) ? '"' + String(s).replace(/"/g, '""') + '"' : s;
-        const filas = ["numero,collage,fila_en_collage,formato,archivo"];
+        const filas = ["numero,imagen,campo,fila_en_imagen,formato,archivo"];
 
         if (collages.length) {
             collages.forEach((c, k) => {
                 c.numeros.forEach((n, f) => {
-                    filas.push([n, k + 1, f + 1, q(c.formato || formatoDe(recibos[n - 1]).nombre), q(c.archivos[f])].join(","));
+                    filas.push([n, q(c.nombre), q(c.campo || "todos"), f + 1, q(c.formato || formatoDe(recibos[n - 1]).nombre), q(c.archivos[f])].join(","));
                 });
             });
         } else {
-            recibos.forEach((r, i) => filas.push([i + 1, "", "", q(formatoDe(r).nombre), q(r.archivo)].join(",")));
+            recibos.forEach((r, i) => filas.push([i + 1, "", "", "", q(formatoDe(r).nombre), q(r.archivo)].join(",")));
         }
 
         return filas.join("\n");
