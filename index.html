@@ -1133,7 +1133,8 @@
                 </select>
             </label>
             <label class="campo"><input type="checkbox" id="optContraste" checked> Blanco y negro con contraste (mejor para OCR)</label>
-            <label class="campo" title="En la ficha, escribe CÓDIGO:, NOMBRE:, DIRECCIÓN:, TELÉFONO: antes de cada campo. Así el texto del OCR sale ya etiquetado."><input type="checkbox" id="optRotulos" checked> Rótulos de campo en la ficha</label>
+            <label class="campo" title="Título de la imagen, encabezados de columna (N°, CÓDIGO…) y, en la ficha, CÓDIGO:, NOMBRE:… antes de cada dato. Desmárcalo para que la imagen solo tenga los datos."><input type="checkbox" id="optRotulos" checked> Títulos y rótulos</label>
+            <label class="campo" title="Número del recibo a la izquierda de cada dato (01, 02, 03…). Sin él, los datos quedan en el mismo orden de captura en todas las imágenes."><input type="checkbox" id="optNumeros" checked> Números de recibo</label>
             <label class="campo"><input type="checkbox" id="optSeparar" checked> Separar collages por formato</label>
         </div>
         <div class="toolbar">
@@ -1294,7 +1295,7 @@
     })();
 
     // Opciones del collage recordadas en el dispositivo.
-    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optSeparar"];
+    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optSeparar"];
 
     try {
         const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
@@ -2626,10 +2627,13 @@
 
         const ficha = opciones.disposicion === "apilado";
         const rotulos = ficha && opciones.rotulos;
+        const conTitulos = opciones.rotulos !== false;      // título + encabezados de columna
+        const conNumeros = opciones.numeros !== false;      // columna con el número del recibo
+        const cabecera = conTitulos ? ALTO_CABECERA : MARGEN;
 
         // Con un solo dato por imagen se compacta: número más angosto y filas más bajas.
         const compacto = !!info.campo;
-        const anchoNum = compacto ? 118 : ANCHO_NUM;
+        const anchoNum = !conNumeros ? 0 : compacto ? 118 : ANCHO_NUM;
         const pad = compacto ? 8 : PAD;
         const anchoDe = z => compacto ? Math.round(z.ancho * 0.8) : z.ancho;
 
@@ -2686,7 +2690,7 @@
             columnas = 1;
         }
 
-        const inicioFilas = ALTO_CABECERA + 10;
+        const inicioFilas = conTitulos ? ALTO_CABECERA + 10 : MARGEN;
         const altoUtil = PH - inicioFilas - MARGEN;
 
         // 4) Llenar: columna por columna; cuando la página se llena, se abre otra.
@@ -2742,34 +2746,38 @@
                 (info.formato ? ` · ${info.formato}` : "") +
                 ` · ${filasPagina.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`;
 
-            let tamTitulo = 30;
-            g.font = `bold ${tamTitulo}px Arial`;
-            while (tamTitulo > 14 && g.measureText(titulo).width > Wfinal - 2 * MARGEN) {
-                tamTitulo--;
+            if (conTitulos) {
+                let tamTitulo = 30;
                 g.font = `bold ${tamTitulo}px Arial`;
+                while (tamTitulo > 14 && g.measureText(titulo).width > Wfinal - 2 * MARGEN) {
+                    tamTitulo--;
+                    g.font = `bold ${tamTitulo}px Arial`;
+                }
+                g.fillStyle = "#111827";
+                g.fillText(titulo, MARGEN, 42);
             }
-            g.fillStyle = "#111827";
-            g.fillText(titulo, MARGEN, 42);
 
             cols.forEach((col, ci) => {
 
                 const x0 = MARGEN + ci * (anchoBloque + HUECO_COLUMNAS);
 
-                // Encabezado de la columna.
-                g.font = "bold 22px Arial";
-                g.fillStyle = "#475569";
-                g.fillText("N°", x0 + anchoNum / 2 - 14, 82);
-                if (!ficha) {
-                    let x = x0 + anchoNum + pad;
-                    zonasUsadas.forEach(z => {
-                        g.fillText(z.rotulo, x, 82);
-                        x += anchoDe(z) + HUECO;
-                    });
-                } else {
-                    g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), x0 + anchoNum + pad, 82);
+                // Encabezado de la columna (solo con títulos).
+                if (conTitulos) {
+                    g.font = "bold 22px Arial";
+                    g.fillStyle = "#475569";
+                    if (conNumeros) g.fillText("N°", x0 + anchoNum / 2 - 14, 82);
+                    if (!ficha) {
+                        let x = x0 + anchoNum + pad;
+                        zonasUsadas.forEach(z => {
+                            g.fillText(z.rotulo, x, 82);
+                            x += anchoDe(z) + HUECO;
+                        });
+                    } else {
+                        g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), x0 + anchoNum + pad, 82);
+                    }
+                    g.fillStyle = "#111827";
+                    g.fillRect(x0, ALTO_CABECERA - 4, anchoBloque, 3);
                 }
-                g.fillStyle = "#111827";
-                g.fillRect(x0, ALTO_CABECERA - 4, anchoBloque, 3);
 
                 let y = inicioFilas;
 
@@ -2780,7 +2788,7 @@
                         g.fillRect(x0, y, anchoBloque, f.alto);
                     }
 
-                    dibujarNumero(g, numeroFormateado(f.numero), x0, y, anchoNum, f.alto, compacto ? 42 : 56);
+                    if (conNumeros) dibujarNumero(g, numeroFormateado(f.numero), x0, y, anchoNum, f.alto, compacto ? 42 : 56);
 
                     if (ficha) {
                         let yy = y + pad;
@@ -2819,13 +2827,15 @@
                 });
 
                 // Línea tras la columna del número.
-                g.fillStyle = "#cbd5e1";
-                g.fillRect(x0 + anchoNum - 2, ALTO_CABECERA, 2, y - ALTO_CABECERA);
+                if (conNumeros) {
+                    g.fillStyle = "#cbd5e1";
+                    g.fillRect(x0 + anchoNum - 2, cabecera, 2, y - cabecera);
+                }
 
                 // Separador grueso entre columnas de datos.
                 if (ci < cols.length - 1) {
                     g.fillStyle = "#111827";
-                    g.fillRect(x0 + anchoBloque + HUECO_COLUMNAS / 2 - 2, ALTO_CABECERA - 4, 4, H - ALTO_CABECERA - MARGEN / 2);
+                    g.fillRect(x0 + anchoBloque + HUECO_COLUMNAS / 2 - 2, cabecera - 4, 4, H - cabecera - MARGEN / 2);
                 }
             });
 
@@ -2871,6 +2881,7 @@
             contraste: $("optContraste").checked,
             formato: $("optFormato").value,
             rotulos: $("optRotulos").checked,
+            numeros: $("optNumeros").checked,
             separar: $("optSeparar").checked
         };
 
