@@ -189,6 +189,106 @@
         align-items: start;
     }
 
+    .editor-barra {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .grupo-herr {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 4px;
+    }
+
+    .herr {
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        background: transparent;
+        color: #334155;
+        cursor: pointer;
+        min-width: 40px;
+    }
+
+    .herr:hover {
+        background: #e2e8f0;
+    }
+
+    .herr.on {
+        background: #4f46e5;
+        color: white;
+    }
+
+    .zoom-texto {
+        min-width: 52px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: bold;
+        color: #475569;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pad {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        color: #475569;
+    }
+
+    .pad-titulo {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        font-weight: bold;
+    }
+
+    .pad-titulo select {
+        padding: 3px 4px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        font-size: 12px;
+    }
+
+    .pad-grupo {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .pad-grupo span {
+        min-width: 40px;
+    }
+
+    .pad-grupo button {
+        border: none;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+        width: 38px;
+        height: 34px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .pad-grupo button:active {
+        background: #e0e7ff;
+    }
+
     .lienzo-wrap {
         background: #0f172a;
         border-radius: 12px;
@@ -200,10 +300,9 @@
 
     #lienzoZonas {
         display: block;
-        max-width: 100%;
-        max-height: 75vh;
-        width: auto;
-        height: auto;
+        width: 100%;
+        height: min(70vh, 640px);
+        outline: none;
         touch-action: none;
         cursor: crosshair;
     }
@@ -816,9 +915,26 @@
         </p>
         <div class="zonas-layout">
             <div>
-                <div class="lienzo-wrap">
-                    <canvas id="lienzoZonas" width="600" height="300"></canvas>
+                <div class="editor-barra">
+                    <div class="grupo-herr">
+                        <button type="button" class="herr" data-modo="dibujar" title="Arrastra para dibujar la zona seleccionada">✏️ Dibujar</button>
+                        <button type="button" class="herr" data-modo="ajustar" title="Arrastra una zona para moverla, o sus manijas para cambiar el tamaño">✥ Ajustar</button>
+                        <button type="button" class="herr" data-modo="mover" title="Arrastra para mover la imagen">✋ Mover</button>
+                    </div>
+                    <div class="grupo-herr">
+                        <button type="button" class="herr" id="btnZoomMenos" title="Alejar">−</button>
+                        <span class="zoom-texto" id="zoomTexto">—</span>
+                        <button type="button" class="herr" id="btnZoomMas" title="Acercar">+</button>
+                        <button type="button" class="herr" id="btnZoomAjustar" title="Ver el recibo completo">⤢ Ver todo</button>
+                    </div>
                 </div>
+                <div class="lienzo-wrap">
+                    <canvas id="lienzoZonas" tabindex="0" aria-label="Recibo para marcar zonas"></canvas>
+                </div>
+                <p class="nota" style="margin-top:6px">
+                    Zoom: pellizca con dos dedos (o rueda del mouse). Con dos dedos también mueves la imagen.
+                    En <b>✥ Ajustar</b>, arrastra la zona para moverla o sus cuadritos para cambiar el tamaño.
+                </p>
                 <div class="nav-recibo" style="margin-top:8px">
                     <button class="btn-mini" id="btnAnterior">◀ Anterior</button>
                     <span id="textoRecibo">—</span>
@@ -1001,6 +1117,112 @@
         renderizarCapturas();
     }
 
+
+    // ==========================================================
+    // GUARDADO EN EL DISPOSITIVO (las capturas sobreviven a una recarga)
+    // ==========================================================
+    //
+    // Cada captura se guarda en la base de datos interna del navegador
+    // (IndexedDB) apenas se toma. Si recargas o cierras la página por error,
+    // al abrirla otra vez las capturas vuelven solas. Solo se borran con
+    // "🗑️ Quitar todo" o con la papelera de cada captura.
+
+    const BD_NOMBRE = "recortesRecibos";
+    const BD_TABLA = "recibos";
+    let bdPromesa = null;
+
+    function abrirBD() {
+        if (bdPromesa) return bdPromesa;
+        bdPromesa = new Promise((res, rej) => {
+            if (!window.indexedDB) { rej(new Error("este navegador no permite guardar datos")); return; }
+            const req = indexedDB.open(BD_NOMBRE, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(BD_TABLA)) {
+                    req.result.createObjectStore(BD_TABLA, { keyPath: "id" });
+                }
+            };
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+        });
+        return bdPromesa;
+    }
+
+    async function operarBD(modo, fn) {
+        const db = await abrirBD();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(BD_TABLA, modo);
+            const tabla = tx.objectStore(BD_TABLA);
+            const req = fn(tabla);
+            tx.oncomplete = () => res(req ? req.result : undefined);
+            tx.onerror = () => rej(tx.error);
+            tx.onabort = () => rej(tx.error);
+        });
+    }
+
+    let avisoGuardadoMostrado = false;
+
+    async function guardarReciboBD(r) {
+        try {
+            await operarBD("readwrite", t => t.put({
+                id: r.id,
+                archivo: r.archivo,
+                blob: r.blob,
+                ancho: r.ancho,
+                alto: r.alto,
+                zonas: r.zonas || null
+            }));
+        } catch (err) {
+            if (!avisoGuardadoMostrado) {
+                avisoGuardadoMostrado = true;
+                setStatus($("statusRecibos"),
+                    "⚠️ No se pudo guardar en el dispositivo (" + (err && err.name === "QuotaExceededError" ? "sin espacio" : (err && err.message) || "error") +
+                    "). Las capturas se perderían al recargar: genera y descarga los collages pronto.", "warning");
+            }
+        }
+    }
+
+    async function borrarReciboBD(id) {
+        try { await operarBD("readwrite", t => t.delete(id)); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    async function limpiarBD() {
+        try { await operarBD("readwrite", t => t.clear()); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    async function recuperarRecibosBD() {
+
+        let guardados = [];
+        try {
+            guardados = await operarBD("readonly", t => t.getAll());
+        } catch (e) {
+            return;
+        }
+
+        if (!guardados || !guardados.length) return;
+
+        recibos = guardados
+            .filter(g => g.blob)
+            .sort((a, b) => a.id - b.id)
+            .map(g => ({ ...g, zonas: g.zonas || null, resultado: null, tira: null }));
+
+        indiceVista = 0;
+
+        let espacio = "";
+        try {
+            const est = await navigator.storage.estimate();
+            const mb = est.usage / 1024 / 1024;
+            espacio = ` (${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB usados en el dispositivo)`;
+        } catch (e) { /* no disponible */ }
+
+        setStatus($("statusRecibos"),
+            `♻️ Se recuperaron ${recibos.length} captura(s) guardadas${espacio}. Para empezar de cero usa 🗑️ Quitar todo.`, "success");
+    }
+
+    // Pide al navegador que no borre estos datos por su cuenta cuando falte espacio.
+    if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(() => {});
+    }
+
     // ==========================================================
     // PASO 2: cargar fotos / PDF
     // ==========================================================
@@ -1060,16 +1282,17 @@
     function agregarRecibo(canvas, nombreArchivo) {
         return new Promise(res => {
             canvas.toBlob(blob => {
-                recibos.push({
-                    id: recibos.length ? recibos[recibos.length - 1].id + 1 : 1,
+                const nuevo = {
+                    id: recibos.reduce((m, r) => Math.max(m, r.id), 0) + 1,
                     archivo: nombreArchivo,
                     blob,
                     ancho: canvas.width,
                     alto: canvas.height,
                     zonas: null,          // zonas propias si se ajustaron a mano
                     resultado: null
-                });
-                res();
+                };
+                recibos.push(nuevo);
+                guardarReciboBD(nuevo).then(res);
             }, "image/jpeg", 0.9);
         });
     }
@@ -1079,6 +1302,7 @@
         if (recibos.length && !confirm(`¿Quitar las ${recibos.length} capturas?`)) return;
         recibos = [];
         indiceVista = 0;
+        limpiarBD();
         marcarCollagesDesactualizados();
         mostrarRecibo();
         renderizarResultados();
@@ -1096,10 +1320,20 @@
     const lienzo = $("lienzoZonas");
     const ctx = lienzo.getContext("2d");
     let imagenVista = null;
-    let arrastre = null;
+
+    // Vista del editor: la imagen se dibuja escalada (esc) y desplazada (ox, oy) en píxeles de pantalla.
+    const vista = { esc: 1, ox: 0, oy: 0, ajustada: true };
+    let modoEditor = "dibujar";        // "dibujar" | "ajustar" | "mover"
+    let accion = null;                 // gesto en curso
+    const punteros = new Map();        // dedos / mouse activos (para pellizcar)
 
     function zonasDe(recibo) {
         return (recibo && recibo.zonas) || plantilla;
+    }
+
+    function zonasEditables() {
+        const r = recibos[indiceVista];
+        return r && r.zonas ? r.zonas : plantilla;
     }
 
     function renderizarBotonesZona() {
@@ -1111,6 +1345,31 @@
                 <span class="estado-zona">${zonas[z.id] ? "✅" : "—"}</span>
             </button>
         `).join("") + `
+            <div class="pad" aria-label="Ajuste fino de la zona seleccionada">
+                <div class="pad-titulo">Ajuste fino de la zona seleccionada
+                    <select id="padPaso" aria-label="Tamaño del paso">
+                        <option value="1">1 px</option>
+                        <option value="4" selected>4 px</option>
+                        <option value="15">15 px</option>
+                    </select>
+                </div>
+                <div class="pad-grupo">
+                    <span>Mover</span>
+                    <button type="button" data-pad="mover" data-dx="-1" data-dy="0" title="Izquierda">◀</button>
+                    <button type="button" data-pad="mover" data-dx="0" data-dy="-1" title="Arriba">▲</button>
+                    <button type="button" data-pad="mover" data-dx="0" data-dy="1" title="Abajo">▼</button>
+                    <button type="button" data-pad="mover" data-dx="1" data-dy="0" title="Derecha">▶</button>
+                </div>
+                <div class="pad-grupo">
+                    <span>Ancho</span>
+                    <button type="button" data-pad="tam" data-dx="-1" data-dy="0" title="Más angosta">−</button>
+                    <button type="button" data-pad="tam" data-dx="1" data-dy="0" title="Más ancha">+</button>
+                    <span>Alto</span>
+                    <button type="button" data-pad="tam" data-dx="0" data-dy="-1" title="Más baja">−</button>
+                    <button type="button" data-pad="tam" data-dx="0" data-dy="1" title="Más alta">+</button>
+                </div>
+            </div>
+            <button type="button" class="btn-mini" id="btnIrZona">🔍 Acercar a la zona seleccionada</button>
             <button type="button" class="btn-mini" id="btnBorrarZona">🧽 Borrar la zona seleccionada</button>
             ${recibos[indiceVista] && recibos[indiceVista].zonas
                 ? '<button type="button" class="btn-mini" id="btnUsarPlantilla">↩️ Este recibo: volver a la plantilla general</button>'
@@ -1130,11 +1389,20 @@
             });
         });
 
+        $("zonaBotones").querySelectorAll("[data-pad]").forEach(b => {
+            b.addEventListener("click", () => {
+                const paso = +$("padPaso").value;
+                ajustarZonaActiva(b.getAttribute("data-pad"), +b.getAttribute("data-dx") * paso, +b.getAttribute("data-dy") * paso);
+            });
+        });
+
+        $("btnIrZona").addEventListener("click", irAZonaActiva);
+
         $("btnBorrarZona").addEventListener("click", () => {
             const r = recibos[indiceVista];
-            const zonas = r && r.zonas ? r.zonas : plantilla;
+            const zonas = zonasEditables();
             delete zonas[zonaActiva];
-            guardarPlantilla();
+            if (zonas === plantilla) guardarPlantilla();
             zonasCambiaron(zonas === plantilla ? null : r);
             renderizarBotonesZona();
             dibujarLienzo();
@@ -1151,134 +1419,463 @@
 
     function guardarPlantilla() {
         try { localStorage.setItem(CLAVE_PLANTILLA, JSON.stringify(plantilla)); } catch (e) { /* sin almacenamiento */ }
+        // La forma del recibo se recuerda para el recuadro de la cámara.
+        if (imagenVista) {
+            try { localStorage.setItem("ocrRecibos.aspecto", String(imagenVista.width / imagenVista.height)); } catch (e) { /* sin almacenamiento */ }
+        }
+    }
+
+    // Guarda después de un cambio de zona (plantilla general o zonas propias del recibo).
+    function confirmarCambioZona() {
+        const r = recibos[indiceVista];
+        const zonas = zonasEditables();
+        if (zonas === plantilla) guardarPlantilla();
+        zonasCambiaron(zonas === plantilla ? null : r);
+        renderizarBotonesZona();
+    }
+
+    // ---------- Tamaño del lienzo y vista ----------
+
+    function tamanoLienzo() {
+        const b = lienzo.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.max(200, Math.round(b.width)), h = Math.max(200, Math.round(b.height));
+        if (lienzo.width !== Math.round(w * dpr) || lienzo.height !== Math.round(h * dpr)) {
+            lienzo.width = Math.round(w * dpr);
+            lienzo.height = Math.round(h * dpr);
+        }
+        return { w, h, dpr };
+    }
+
+    function ajustarVista() {
+        const { w, h } = tamanoLienzo();
+        if (!imagenVista) return;
+        const esc = Math.min(w / imagenVista.width, h / imagenVista.height) * 0.96;
+        vista.esc = esc;
+        vista.ox = (w - imagenVista.width * esc) / 2;
+        vista.oy = (h - imagenVista.height * esc) / 2;
+        vista.ajustada = true;
+        pintarZoom();
+    }
+
+    function escalaMinima() {
+        const { w, h } = tamanoLienzo();
+        return imagenVista ? Math.min(w / imagenVista.width, h / imagenVista.height) * 0.5 : 0.1;
+    }
+
+    // Zoom alrededor de un punto de la pantalla (px, py).
+    function zoomEn(factor, px, py) {
+        if (!imagenVista) return;
+        const nueva = Math.max(escalaMinima(), Math.min(12, vista.esc * factor));
+        const f = nueva / vista.esc;
+        vista.ox = px - (px - vista.ox) * f;
+        vista.oy = py - (py - vista.oy) * f;
+        vista.esc = nueva;
+        vista.ajustada = false;
+        pintarZoom();
+        dibujarLienzo();
+    }
+
+    function pintarZoom() {
+        if (!imagenVista) { $("zoomTexto").textContent = "—"; return; }
+        const base = Math.min(tamanoLienzo().w / imagenVista.width, tamanoLienzo().h / imagenVista.height) * 0.96;
+        $("zoomTexto").textContent = `${Math.round((vista.esc / base) * 100)} %`;
+    }
+
+    function irAZonaActiva() {
+        const z = zonasDe(recibos[indiceVista])[zonaActiva];
+        if (!z || !imagenVista) return;
+        const { w, h } = tamanoLienzo();
+        const zw = z.w * imagenVista.width, zh = z.h * imagenVista.height;
+        vista.esc = Math.min(12, Math.min(w / (zw * 1.4), h / (zh * 1.8)));
+        vista.ox = w / 2 - (z.x * imagenVista.width + zw / 2) * vista.esc;
+        vista.oy = h / 2 - (z.y * imagenVista.height + zh / 2) * vista.esc;
+        vista.ajustada = false;
+        pintarZoom();
+        dibujarLienzo();
+    }
+
+    // Pantalla -> imagen (en fracciones 0..1) y al revés.
+    function aImagen(px, py) {
+        return {
+            x: (px - vista.ox) / vista.esc / imagenVista.width,
+            y: (py - vista.oy) / vista.esc / imagenVista.height
+        };
+    }
+
+    function aPantalla(z) {
+        return {
+            x: vista.ox + z.x * imagenVista.width * vista.esc,
+            y: vista.oy + z.y * imagenVista.height * vista.esc,
+            w: z.w * imagenVista.width * vista.esc,
+            h: z.h * imagenVista.height * vista.esc
+        };
     }
 
     async function mostrarRecibo() {
 
         const r = recibos[indiceVista];
+        if (imagenVista && imagenVista.close) imagenVista.close();
         imagenVista = r ? await cargarImagen(r) : null;
 
         $("textoRecibo").textContent = r
             ? `Recibo ${indiceVista + 1} de ${recibos.length} · ${r.archivo}`
             : "—";
 
-        if (imagenVista) {
-            // Lienzo en la resolución de la imagen reducida (se ve escalado por CSS).
-            const esc = Math.min(1, 1200 / imagenVista.width);
-            lienzo.width = Math.round(imagenVista.width * esc);
-            lienzo.height = Math.round(imagenVista.height * esc);
-        } else {
-            lienzo.width = 600;
-            lienzo.height = 300;
-        }
-
         $("pruebaLectura").textContent = "";
+        ajustarVista();
         renderizarBotonesZona();
         dibujarLienzo();
     }
 
+    // ---------- Dibujo ----------
+
+    const MANIJA = 9;   // radio de las manijas (px de pantalla)
+
+    function manijasDe(p) {
+        return {
+            nw: [p.x, p.y], n: [p.x + p.w / 2, p.y], ne: [p.x + p.w, p.y],
+            e: [p.x + p.w, p.y + p.h / 2], se: [p.x + p.w, p.y + p.h], s: [p.x + p.w / 2, p.y + p.h],
+            sw: [p.x, p.y + p.h], w: [p.x, p.y + p.h / 2]
+        };
+    }
+
     function dibujarLienzo() {
 
-        if (!arrastre) programarVistaPrevia();
+        if (!accion) programarVistaPrevia();
 
-        ctx.clearRect(0, 0, lienzo.width, lienzo.height);
+        const { w, h, dpr } = tamanoLienzo();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, w, h);
 
         if (!imagenVista) {
             ctx.fillStyle = "#94a3b8";
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("Carga recibos en el paso 2 para marcar las zonas", lienzo.width / 2, lienzo.height / 2);
+            ctx.fillText("Toma o carga un recibo en el paso 1 para marcar las zonas", w / 2, h / 2);
+            ctx.textAlign = "left";
             return;
         }
 
-        ctx.drawImage(imagenVista, 0, 0, lienzo.width, lienzo.height);
+        ctx.imageSmoothingEnabled = vista.esc < 2;
+        ctx.drawImage(imagenVista, vista.ox, vista.oy, imagenVista.width * vista.esc, imagenVista.height * vista.esc);
 
         const zonas = zonasDe(recibos[indiceVista]);
 
         ZONAS.forEach(z => {
             const r = zonas[z.id];
             if (!r) return;
-            const x = r.x * lienzo.width, y = r.y * lienzo.height, w = r.w * lienzo.width, h = r.h * lienzo.height;
-            ctx.fillStyle = z.color + "22";
-            ctx.fillRect(x, y, w, h);
-            ctx.lineWidth = zonaActiva === z.id ? 4 : 2;
+            const p = aPantalla(r);
+            const activa = zonaActiva === z.id;
+
+            ctx.fillStyle = z.color + (activa ? "22" : "14");
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.lineWidth = activa ? 2.5 : 1.5;
             ctx.strokeStyle = z.color;
-            ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = z.color;
-            ctx.font = "bold 16px Arial";
-            ctx.textAlign = "left";
+            ctx.strokeRect(p.x, p.y, p.w, p.h);
+
+            ctx.font = "bold 13px Arial";
             const etiqueta = z.nombre;
             const tw = ctx.measureText(etiqueta).width + 10;
-            ctx.fillRect(x, Math.max(0, y - 22), tw, 22);
+            ctx.fillStyle = z.color;
+            ctx.fillRect(p.x, p.y - 20, tw, 20);
             ctx.fillStyle = "white";
-            ctx.fillText(etiqueta, x + 5, Math.max(16, y - 6));
+            ctx.fillText(etiqueta, p.x + 5, p.y - 6);
+
+            // Manijas para ajustar (solo en la zona seleccionada).
+            if (activa && modoEditor === "ajustar") {
+                Object.values(manijasDe(p)).forEach(([mx, my]) => {
+                    ctx.fillStyle = "white";
+                    ctx.strokeStyle = z.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(mx - MANIJA / 2 - 1, my - MANIJA / 2 - 1, MANIJA + 2, MANIJA + 2);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            }
         });
 
-        if (arrastre) {
+        // Rectángulo que se está dibujando.
+        if (accion && accion.tipo === "dibujar") {
             const z = ZONAS.find(z => z.id === zonaActiva);
-            ctx.setLineDash([8, 6]);
-            ctx.lineWidth = 3;
+            ctx.setLineDash([7, 5]);
+            ctx.lineWidth = 2;
             ctx.strokeStyle = z.color;
-            ctx.strokeRect(arrastre.x0, arrastre.y0, arrastre.x1 - arrastre.x0, arrastre.y1 - arrastre.y0);
+            ctx.strokeRect(accion.x0, accion.y0, accion.x1 - accion.x0, accion.y1 - accion.y0);
             ctx.setLineDash([]);
         }
     }
 
-    function puntoEnLienzo(e) {
+    // ---------- Herramientas y zoom (botones) ----------
+
+    function pintarModo() {
+        document.querySelectorAll("[data-modo]").forEach(b => b.classList.toggle("on", b.getAttribute("data-modo") === modoEditor));
+        lienzo.style.cursor = modoEditor === "mover" ? "grab" : modoEditor === "ajustar" ? "default" : "crosshair";
+    }
+
+    document.querySelectorAll("[data-modo]").forEach(b => b.addEventListener("click", () => {
+        modoEditor = b.getAttribute("data-modo");
+        pintarModo();
+        dibujarLienzo();
+    }));
+
+    $("btnZoomMas").addEventListener("click", () => { const { w, h } = tamanoLienzo(); zoomEn(1.4, w / 2, h / 2); });
+    $("btnZoomMenos").addEventListener("click", () => { const { w, h } = tamanoLienzo(); zoomEn(1 / 1.4, w / 2, h / 2); });
+    $("btnZoomAjustar").addEventListener("click", () => { ajustarVista(); dibujarLienzo(); });
+
+    window.addEventListener("resize", () => {
+        if (vista.ajustada) ajustarVista();
+        dibujarLienzo();
+    });
+
+    // ---------- Gestos sobre el lienzo ----------
+
+    function puntoLocal(e) {
         const b = lienzo.getBoundingClientRect();
-        return {
-            x: (e.clientX - b.left) * (lienzo.width / b.width),
-            y: (e.clientY - b.top) * (lienzo.height / b.height)
-        };
+        return { x: e.clientX - b.left, y: e.clientY - b.top };
+    }
+
+    // ¿Qué hay bajo el dedo? (manija o interior de alguna zona)
+    function tocarZona(p) {
+        const zonas = zonasDe(recibos[indiceVista]);
+
+        const activa = zonas[zonaActiva];
+        if (activa) {
+            const m = manijasDe(aPantalla(activa));
+            for (const [nombre, [mx, my]] of Object.entries(m)) {
+                if (Math.abs(p.x - mx) <= MANIJA + 6 && Math.abs(p.y - my) <= MANIJA + 6) return { id: zonaActiva, parte: nombre };
+            }
+        }
+
+        // Interior: primero la activa, luego las demás.
+        const orden = [zonaActiva, ...ZONAS.map(z => z.id).filter(id => id !== zonaActiva)];
+        for (const id of orden) {
+            const z = zonas[id];
+            if (!z) continue;
+            const q = aPantalla(z);
+            if (p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) return { id, parte: "centro" };
+        }
+        return null;
     }
 
     lienzo.addEventListener("pointerdown", e => {
+
         if (!imagenVista) return;
         lienzo.setPointerCapture(e.pointerId);
-        const p = puntoEnLienzo(e);
-        arrastre = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        lienzo.focus({ preventScroll: true });
+
+        const p = puntoLocal(e);
+        punteros.set(e.pointerId, p);
+
+        // Dos dedos: pellizcar para zoom y arrastrar para mover (cancela lo demás).
+        if (punteros.size === 2) {
+            const [a, b] = [...punteros.values()];
+            accion = {
+                tipo: "pellizco",
+                dist: Math.hypot(a.x - b.x, a.y - b.y),
+                cx: (a.x + b.x) / 2,
+                cy: (a.y + b.y) / 2
+            };
+            dibujarLienzo();
+            return;
+        }
+
+        if (punteros.size > 2) return;
+
+        const moverVista = modoEditor === "mover" || e.button === 1 || e.button === 2;
+
+        if (moverVista) {
+            accion = { tipo: "pan", x: p.x, y: p.y };
+            lienzo.style.cursor = "grabbing";
+            return;
+        }
+
+        if (modoEditor === "ajustar") {
+            const t = tocarZona(p);
+            if (t) {
+                if (t.id !== zonaActiva) { zonaActiva = t.id; renderizarBotonesZona(); }
+                const z = zonasEditables()[t.id] || zonasDe(recibos[indiceVista])[t.id];
+                accion = { tipo: "ajustar", parte: t.parte, inicio: aImagen(p.x, p.y), original: { ...z } };
+            } else {
+                accion = { tipo: "pan", x: p.x, y: p.y };
+            }
+            dibujarLienzo();
+            return;
+        }
+
+        // Dibujar un rectángulo nuevo para la zona seleccionada.
+        accion = { tipo: "dibujar", x0: p.x, y0: p.y, x1: p.x, y1: p.y };
     });
 
     lienzo.addEventListener("pointermove", e => {
-        if (!arrastre) return;
-        const p = puntoEnLienzo(e);
-        arrastre.x1 = p.x;
-        arrastre.y1 = p.y;
-        dibujarLienzo();
-    });
 
-    const soltar = () => {
-        if (!arrastre) return;
-        const x = Math.min(arrastre.x0, arrastre.x1), y = Math.min(arrastre.y0, arrastre.y1);
-        const w = Math.abs(arrastre.x1 - arrastre.x0), h = Math.abs(arrastre.y1 - arrastre.y0);
-        arrastre = null;
+        if (!punteros.has(e.pointerId)) return;
+        const p = puntoLocal(e);
+        punteros.set(e.pointerId, p);
 
-        if (w > 8 && h > 8) {
-            const r = recibos[indiceVista];
-            const destino = r && r.zonas ? r.zonas : plantilla;
-            destino[zonaActiva] = {
-                x: x / lienzo.width, y: y / lienzo.height,
-                w: w / lienzo.width, h: h / lienzo.height
-            };
-            if (destino === plantilla) {
-                guardarPlantilla();
-                // La forma del recibo se recuerda para el recuadro de la cámara.
-                try { localStorage.setItem("ocrRecibos.aspecto", String(lienzo.width / lienzo.height)); } catch (e) { /* sin almacenamiento */ }
-            }
+        if (!accion) return;
 
-            zonasCambiaron(destino === plantilla ? null : r);
-
-            // Avanza sola a la siguiente zona que falte.
-            const falta = ZONAS.find(z => z.id !== "codigo" && !destino[z.id]);
-            if (falta) zonaActiva = falta.id;
+        if (accion.tipo === "pellizco" && punteros.size >= 2) {
+            const [a, b] = [...punteros.values()];
+            const dist = Math.hypot(a.x - b.x, a.y - b.y);
+            const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+            vista.ox += cx - accion.cx;
+            vista.oy += cy - accion.cy;
+            accion.cx = cx;
+            accion.cy = cy;
+            if (accion.dist > 0) zoomEn(dist / accion.dist, cx, cy);
+            accion.dist = dist;
+            return;
         }
 
-        renderizarBotonesZona();
-        dibujarLienzo();
-    };
+        if (accion.tipo === "pan") {
+            vista.ox += p.x - accion.x;
+            vista.oy += p.y - accion.y;
+            accion.x = p.x;
+            accion.y = p.y;
+            vista.ajustada = false;
+            dibujarLienzo();
+            return;
+        }
 
-    lienzo.addEventListener("pointerup", soltar);
-    lienzo.addEventListener("pointercancel", soltar);
+        if (accion.tipo === "dibujar") {
+            accion.x1 = p.x;
+            accion.y1 = p.y;
+            dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "ajustar") {
+
+            const actual = aImagen(p.x, p.y);
+            const dx = actual.x - accion.inicio.x, dy = actual.y - accion.inicio.y;
+            const o = accion.original;
+            let { x, y, w, h } = o;
+
+            if (accion.parte === "centro") {
+                x = o.x + dx;
+                y = o.y + dy;
+            } else {
+                if (accion.parte.includes("w")) { x = o.x + dx; w = o.w - dx; }
+                if (accion.parte.includes("e")) { w = o.w + dx; }
+                if (accion.parte.includes("n")) { y = o.y + dy; h = o.h - dy; }
+                if (accion.parte.includes("s")) { h = o.h + dy; }
+            }
+
+            // Tamaño mínimo y dentro de la imagen.
+            const minW = 8 / imagenVista.width, minH = 6 / imagenVista.height;
+            if (w < minW) { if (accion.parte.includes("w")) x -= minW - w; w = minW; }
+            if (h < minH) { if (accion.parte.includes("n")) y -= minH - h; h = minH; }
+            x = Math.max(0, Math.min(1 - w, x));
+            y = Math.max(0, Math.min(1 - h, y));
+            w = Math.min(w, 1 - x);
+            h = Math.min(h, 1 - y);
+
+            zonasEditables()[zonaActiva] = { x, y, w, h };
+            dibujarLienzo();
+        }
+    });
+
+    function soltarPuntero(e) {
+
+        punteros.delete(e.pointerId);
+
+        if (!accion) return;
+
+        if (accion.tipo === "pellizco") {
+            if (punteros.size === 0) accion = null;
+            return;
+        }
+
+        if (accion.tipo === "dibujar") {
+            const x0 = Math.min(accion.x0, accion.x1), y0 = Math.min(accion.y0, accion.y1);
+            const x1 = Math.max(accion.x0, accion.x1), y1 = Math.max(accion.y0, accion.y1);
+            accion = null;
+
+            if (x1 - x0 > 6 && y1 - y0 > 6) {
+                const a = aImagen(x0, y0), b = aImagen(x1, y1);
+                const x = Math.max(0, a.x), y = Math.max(0, a.y);
+                const destino = zonasEditables();
+                destino[zonaActiva] = { x, y, w: Math.min(1, b.x) - x, h: Math.min(1, b.y) - y };
+                confirmarCambioZona();
+
+                // Avanza sola a la siguiente zona que falte; si ya están todas, pasa a ajustar.
+                const falta = ZONAS.find(z => z.id !== "codigo" && !destino[z.id]);
+                if (falta) {
+                    zonaActiva = falta.id;
+                } else {
+                    modoEditor = "ajustar";
+                    pintarModo();
+                }
+                renderizarBotonesZona();
+            }
+            dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "ajustar") {
+            accion = null;
+            confirmarCambioZona();
+            dibujarLienzo();
+            return;
+        }
+
+        accion = null;
+        pintarModo();
+        dibujarLienzo();
+    }
+
+    lienzo.addEventListener("pointerup", soltarPuntero);
+    lienzo.addEventListener("pointercancel", soltarPuntero);
+    lienzo.addEventListener("contextmenu", e => e.preventDefault());
+
+    // Rueda del mouse: zoom donde está el cursor.
+    lienzo.addEventListener("wheel", e => {
+        if (!imagenVista) return;
+        e.preventDefault();
+        const p = puntoLocal(e);
+        zoomEn(Math.exp(-e.deltaY * 0.0015), p.x, p.y);
+    }, { passive: false });
+
+    // Ajuste fino con los botones o con las flechas del teclado.
+    function ajustarZonaActiva(tipo, dxPx, dyPx) {
+
+        if (!imagenVista) return;
+        const zonas = zonasEditables();
+        const z = zonas[zonaActiva] || zonasDe(recibos[indiceVista])[zonaActiva];
+        if (!z) return;
+
+        const dx = dxPx / imagenVista.width, dy = dyPx / imagenVista.height;
+        let { x, y, w, h } = z;
+
+        if (tipo === "mover") {
+            x = Math.max(0, Math.min(1 - w, x + dx));
+            y = Math.max(0, Math.min(1 - h, y + dy));
+        } else {
+            // Crece o se encoge desde el centro.
+            w = Math.max(4 / imagenVista.width, Math.min(1, w + dx));
+            h = Math.max(4 / imagenVista.height, Math.min(1, h + dy));
+            x = Math.max(0, Math.min(1 - w, x - dx / 2));
+            y = Math.max(0, Math.min(1 - h, y - dy / 2));
+        }
+
+        zonas[zonaActiva] = { x, y, w, h };
+        confirmarCambioZona();
+        dibujarLienzo();
+    }
+
+    lienzo.addEventListener("keydown", e => {
+        const flechas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        if (!flechas[e.key]) return;
+        e.preventDefault();
+        const paso = e.shiftKey ? 15 : 1;
+        const [dx, dy] = flechas[e.key];
+        ajustarZonaActiva(e.altKey ? "tam" : "mover", dx * paso, dy * paso);
+    });
+
+    pintarModo();
 
     $("btnAnterior").addEventListener("click", () => {
         if (indiceVista > 0) { indiceVista--; mostrarRecibo(); }
@@ -1287,6 +1884,7 @@
     $("btnSiguiente").addEventListener("click", () => {
         if (indiceVista < recibos.length - 1) { indiceVista++; mostrarRecibo(); }
     });
+
 
 
     // ==========================================================
@@ -1451,6 +2049,8 @@
         if (recibo.zonas) {
             Object.keys(recibo.zonas).forEach(k => { recibo.zonas[k] = rotarZona(recibo.zonas[k], grados); });
         }
+
+        await guardarReciboBD(recibo);
     }
 
     $("btnGirarUno").addEventListener("click", async () => {
@@ -1562,6 +2162,7 @@
         }
 
         if (b.getAttribute("data-accion") === "quitar") {
+            borrarReciboBD(r.id);
             recibos.splice(i, 1);
             indiceVista = Math.min(indiceVista, Math.max(0, recibos.length - 1));
             marcarCollagesDesactualizados();
@@ -1569,7 +2170,7 @@
             mostrarRecibo();
         } else {
             indiceVista = i;
-            if (!r.zonas) r.zonas = JSON.parse(JSON.stringify(plantilla));
+            if (!r.zonas) { r.zonas = JSON.parse(JSON.stringify(plantilla)); guardarReciboBD(r); }
             r.tira = null;
             await mostrarRecibo();
             $("lienzoZonas").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1881,7 +2482,11 @@
 
     // Cuando cambian las zonas: se rehacen las miniaturas y los collages quedan viejos.
     function zonasCambiaron(recibo) {
-        if (recibo) recibo.tira = null;
+        if (recibo) {
+            recibo.tira = null;
+            clearTimeout(recibo._tGuardar);
+            recibo._tGuardar = setTimeout(() => guardarReciboBD(recibo), 500);
+        }
         else recibos.forEach(r => { if (!r.zonas) r.tira = null; });
         marcarCollagesDesactualizados();
         clearTimeout(zonasCambiaron.t);
@@ -2452,9 +3057,12 @@
 
 
 
-    // Inicio
-    mostrarRecibo();
-    renderizarCapturas();
+    // Inicio: recuperar las capturas guardadas en el dispositivo.
+    (async () => {
+        await recuperarRecibosBD();
+        await mostrarRecibo();
+        renderizarCapturas();
+    })();
 
 </script>
 
