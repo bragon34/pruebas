@@ -4,9 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>OCR de Recibos → CSV</title>
+<title>Recortes de Recibos</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
     * {
@@ -632,6 +631,146 @@
             width: 100%;
         }
     }
+
+    /* ---------- Capturas y collages ---------- */
+
+    .tira {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: white;
+        margin-top: 6px;
+    }
+
+    .contador-capturas {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: normal;
+    }
+
+    .lista-capturas {
+        display: grid;
+        gap: 8px;
+        max-height: 520px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .captura {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+    }
+
+    .captura-num {
+        flex: 0 0 auto;
+        min-width: 44px;
+        height: 44px;
+        padding: 0 6px;
+        border-radius: 10px;
+        background: #111827;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        display: grid;
+        place-items: center;
+    }
+
+    .captura-cuerpo {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .captura-cuerpo .tira {
+        margin-top: 0;
+        max-height: 56px;
+        width: auto;
+    }
+
+    .captura-cuerpo small {
+        display: block;
+        color: #94a3b8;
+        font-size: 11px;
+        margin-top: 3px;
+    }
+
+    .captura-acciones {
+        display: flex;
+        gap: 4px;
+        flex: 0 0 auto;
+    }
+
+    .opciones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .opciones select {
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        background: white;
+    }
+
+    #accionesCollages {
+        display: contents;
+    }
+
+    #accionesCollages[hidden] {
+        display: none;
+    }
+
+    .lista-collages {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .collage {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f8fafc;
+    }
+
+    .collage img {
+        display: block;
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        object-position: top left;
+        background: white;
+    }
+
+    .collage-pie {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .collage-pie small {
+        color: #64748b;
+    }
+
+    .cam-aviso .tira {
+        margin: 6px auto 0;
+        max-height: 60px;
+        width: auto;
+    }
 </style>
 </head>
 
@@ -640,57 +779,40 @@
 <div class="app">
 
     <div class="card">
-        <h1>🧾 OCR de Recibos → CSV para GPS Track</h1>
+        <h1>✂️ Recortes de Recibos → Collages</h1>
         <p class="sub">
-            Toma fotos a los recibos (o escanéalos en PDF), marca una sola vez dónde está el nombre y la
-            dirección, y la página lee esa parte en todos los recibos. Al final descargas un CSV con
-            <strong>Nombre, lat, lon</strong> listo para cargar en GPS Track.
+            Captura los recibos con el recuadro guía. La página recorta <strong>exactamente</strong> las zonas que marcaste
+            (nombre, dirección, código) y las une en collages numerados de 15 recibos por imagen, con todos los recortes del
+            mismo tamaño. Luego pasas los collages por la aplicación de OCR que prefieras (Google Lens, Google Drive,
+            Microsoft Lens…) y el número de cada fila te dice a qué recibo corresponde.
         </p>
-        <p class="nota">
-            Consejo: para que las zonas caigan igual en todos los recibos, usa una app de escáner
-            (Microsoft Lens, Adobe Scan o el escáner de Google Drive) que recorta y endereza la hoja.
-            Todo el procesamiento ocurre en tu celular o computador: los recibos no se suben a ningún servidor.
-        </p>
+        <p class="nota">Todo se procesa en tu celular o computador: las imágenes no se suben a ningún servidor.</p>
     </div>
 
     <!-- PASO 1 -->
     <div class="card">
-        <h2><span class="paso">1</span> Tu lista de clientes con coordenadas <small style="font-weight:normal;color:#64748b">(opcional, pero recomendado)</small></h2>
-        <p class="sub">
-            Si ya tienes el CSV de clientes con <strong>Nombre, lat, lon</strong> (el mismo que usas en GPS Track),
-            cárgalo. Cada recibo leído se cruza con esa lista por nombre, código o dirección, y toma sus
-            coordenadas exactas. Si tiene columnas <em>codigo</em> o <em>direccion</em>, también se usan.
-        </p>
+        <h2><span class="paso">1</span> Capturar los recibos</h2>
         <div class="toolbar">
-            <button class="btn" id="btnMaestro">📂 Cargar CSV de clientes</button>
-            <input type="file" id="inputMaestro" accept=".csv,text/csv">
-            <label class="campo">Ciudad para buscar direcciones
-                <input type="text" id="ciudad" value="Floridablanca, Santander">
-            </label>
+            <button class="btn green" id="btnCamara">📷 Modo cámara (con recuadro)</button>
+            <button class="btn secondary" id="btnFotoNativa">📸 Foto con la cámara del celular</button>
+            <input type="file" id="inputFotoNativa" accept="image/*" capture="environment">
+            <button class="btn secondary" id="btnRecibos">🖼️ Cargar fotos / PDF</button>
+            <input type="file" id="inputRecibos" accept="image/*,application/pdf" multiple>
+            <button class="btn secondary" id="btnLimpiarRecibos">🗑️ Quitar todo</button>
         </div>
-        <div id="statusMaestro" class="status">Sin lista de clientes. Las coordenadas se buscarán por la dirección (aproximadas).</div>
+        <div id="statusRecibos" class="status">Aún no hay capturas. El modo cámara necesita que la página esté en una dirección https://.</div>
+        <p class="nota">
+            Primera vez: toma o carga un recibo, marca sus zonas en el paso 2 y luego vuelve al modo cámara:
+            verás esas zonas encima de la imagen para alinear todos los recibos igual.
+        </p>
     </div>
 
     <!-- PASO 2 -->
     <div class="card">
-        <h2><span class="paso">2</span> Fotos o PDF de los recibos</h2>
-        <div class="toolbar">
-            <button class="btn" id="btnRecibos">📷 Cargar fotos / PDF</button>
-            <input type="file" id="inputRecibos" accept="image/*,application/pdf" multiple>
-            <button class="btn green" id="btnCamara">📷 Modo cámara (con recuadro)</button>
-            <button class="btn secondary" id="btnFotoNativa">📸 Foto con la cámara del celular</button>
-            <input type="file" id="inputFotoNativa" accept="image/*" capture="environment">
-            <button class="btn secondary" id="btnLimpiarRecibos">🗑️ Quitar recibos</button>
-        </div>
-        <div id="statusRecibos" class="status">Aún no hay recibos cargados. Puedes elegir varias fotos a la vez, o un PDF con todas las páginas.</div>
-    </div>
-
-    <!-- PASO 3 -->
-    <div class="card">
-        <h2><span class="paso">3</span> Marca las zonas que se van a leer</h2>
+        <h2><span class="paso">2</span> Marca las zonas a recortar</h2>
         <p class="sub" style="margin-bottom:12px">
-            Elige una zona a la derecha y arrastra un rectángulo sobre el recibo. Solo se lee lo que queda dentro,
-            así el resto del recibo no se procesa. La plantilla se guarda en este dispositivo para la próxima vez.
+            Elige una zona a la derecha y arrastra un rectángulo sobre el recibo. El recorte es estricto: solo sale lo que
+            queda dentro. Las zonas se guardan en este dispositivo y se usan para todas las capturas.
         </p>
         <div class="zonas-layout">
             <div>
@@ -701,7 +823,6 @@
                     <button class="btn-mini" id="btnAnterior">◀ Anterior</button>
                     <span id="textoRecibo">—</span>
                     <button class="btn-mini" id="btnSiguiente">Siguiente ▶</button>
-                    <button class="btn-mini" id="btnProbar">🔎 Probar lectura en este recibo</button>
                 </div>
                 <div id="pruebaLectura" class="nota"></div>
             </div>
@@ -709,41 +830,62 @@
         </div>
     </div>
 
+    <!-- PASO 3 -->
+    <div class="card">
+        <h2><span class="paso">3</span> Capturas <span class="contador-capturas">(<span id="totalCapturas">0</span>)</span></h2>
+        <p class="sub" style="margin-bottom:10px">
+            Revisa que cada recorte muestre bien el texto. Si uno quedó corrido, usa <b>✂️ Zonas</b> para ajustarle las zonas
+            solo a ese recibo, o quítalo y vuelve a capturarlo.
+        </p>
+        <div class="lista-capturas" id="listaCapturas"></div>
+    </div>
+
     <!-- PASO 4 -->
     <div class="card">
-        <h2><span class="paso">4</span> Leer, revisar y descargar</h2>
+        <h2><span class="paso">4</span> Collages para tu app de OCR</h2>
+        <div class="opciones">
+            <label class="campo">Recibos por collage
+                <select id="optPorCollage">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="20">20</option>
+                    <option value="25">25</option>
+                </select>
+            </label>
+            <label class="campo">Disposición
+                <select id="optDisposicion">
+                    <option value="fila" selected>Una fila por recibo (zonas lado a lado)</option>
+                    <option value="apilado">Zonas una debajo de otra</option>
+                </select>
+            </label>
+            <label class="campo">Margen del recorte
+                <select id="optMargen">
+                    <option value="0" selected>0 % (estricto)</option>
+                    <option value="0.5">0,5 %</option>
+                    <option value="1">1 %</option>
+                    <option value="2">2 %</option>
+                </select>
+            </label>
+            <label class="campo">Formato
+                <select id="optFormato">
+                    <option value="jpeg" selected>JPG (liviano)</option>
+                    <option value="png">PNG (máxima calidad)</option>
+                </select>
+            </label>
+            <label class="campo"><input type="checkbox" id="optContraste" checked> Blanco y negro con contraste (mejor para OCR)</label>
+        </div>
         <div class="toolbar">
-            <button class="btn green" id="btnLeer">▶️ Leer todos los recibos</button>
-            <button class="btn danger" id="btnCancelar" hidden>⏹️ Detener</button>
-            <button class="btn secondary" id="btnGeocodificar">🌎 Buscar coordenadas por dirección</button>
-            <button class="btn" id="btnDescargar">⬇️ Descargar CSV para GPS Track</button>
-            <button class="btn secondary" id="btnCopiar">📋 Copiar CSV</button>
-            <label class="campo"><input type="checkbox" id="incluirSinCoord" checked> Incluir recibos sin coordenadas</label>
+            <button class="btn green" id="btnGenerar">🧩 Generar collages</button>
+            <span id="accionesCollages" hidden>
+                <button class="btn" id="btnZip">📦 Descargar todo (ZIP)</button>
+                <button class="btn secondary" id="btnPdf">📄 Descargar PDF</button>
+                <button class="btn secondary" id="btnIndice">🧾 Índice de recibos (CSV)</button>
+            </span>
         </div>
         <div class="progreso"><div id="barra"></div></div>
-        <div id="statusLectura" class="status">Carga recibos y marca al menos la zona de dirección o de nombre.</div>
-
-        <div style="margin-top:14px">
-            <div class="resumen" id="resumen"></div>
-            <div class="tabla-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Nombre leído</th>
-                            <th>Dirección leída</th>
-                            <th>Cliente de tu lista</th>
-                            <th>Coordenadas</th>
-                            <th>Estado</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody">
-                        <tr><td colspan="7" class="empty-hint">Los resultados aparecerán aquí.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <div id="statusCollages" class="status">Cuando tengas las capturas, genera los collages.</div>
+        <div class="lista-collages" id="listaCollages"></div>
     </div>
 
 </div>
@@ -774,23 +916,10 @@
     </div>
 </div>
 
-<!-- Modal para ubicar a mano -->
-<div class="modal" id="modalMapa" hidden>
-    <div class="modal-caja">
-        <strong id="modalTitulo">Ubicar recibo</strong>
-        <div class="nota" style="margin-top:0">Toca el mapa donde queda la casa. Puedes cambiar a satélite arriba a la derecha.</div>
-        <div id="mapaModal"></div>
-        <div class="toolbar" style="margin-top:0">
-            <button class="btn green" id="modalUsar">✔️ Usar esta ubicación</button>
-            <button class="btn secondary" id="modalCerrar">Cancelar</button>
-            <span id="modalCoords" class="coords"></span>
-        </div>
-    </div>
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 
@@ -799,23 +928,17 @@
     // ==========================================================
 
     const ZONAS = [
-        { id: "nombre",    nombre: "👤 Nombre del cliente", ayuda: "Recomendado", color: "#2563eb" },
-        { id: "direccion", nombre: "🏠 Dirección",          ayuda: "Recomendado", color: "#dc2626" },
-        { id: "codigo",    nombre: "🔢 Código / cuenta",    ayuda: "Opcional: se cruza con la columna codigo", color: "#059669" }
+        { id: "nombre",    nombre: "👤 Nombre del cliente", ayuda: "Recomendado", color: "#2563eb", ancho: 900 },
+        { id: "direccion", nombre: "🏠 Dirección",          ayuda: "Recomendado", color: "#dc2626", ancho: 1100 },
+        { id: "codigo",    nombre: "🔢 Código / cuenta",    ayuda: "Opcional",    color: "#059669", ancho: 480 }
     ];
 
+    // Se comparte con la página OCR: si ya marcaste zonas allá, aparecen aquí.
     const CLAVE_PLANTILLA = "ocrRecibos.plantilla";
-    const CLAVE_CIUDAD = "ocrRecibos.ciudad";
+    const CLAVE_OPCIONES = "recortes.opciones";
 
-    // Coincidencia con la lista de clientes (0 a 1).
-    const UMBRAL_SEGURO = 0.8;
-    const UMBRAL_REVISAR = 0.55;
-
-    // Centro por defecto del mapa manual (Floridablanca).
-    const CENTRO_DEFECTO = [7.064, -73.089];
-
-    // Lado máximo al guardar cada recibo (px): suficiente para OCR sin llenar la memoria.
-    const LADO_MAXIMO = 2200;
+    // Lado máximo al guardar cada recibo (px). Alto para que los recortes salgan nítidos.
+    const LADO_MAXIMO = 3000;
 
     if (window.pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -826,14 +949,12 @@
     // ESTADO
     // ==========================================================
 
-    let maestro = [];          // { nombre, lat, lon, codigo, direccion, _n, _d, _c }
-    let recibos = [];          // { id, archivo, blob, ancho, alto, zonas?, resultado }
+    let recibos = [];          // { id, archivo, blob, ancho, alto, zonas?, tira? }
     let plantilla = {};        // { nombre: {x,y,w,h}, direccion: {...}, codigo: {...} } en fracciones 0..1
     let zonaActiva = "direccion";
     let indiceVista = 0;
-    let workerOCR = null;
-    let cancelar = false;
-    let leyendo = false;
+    let leyendo = false;       // true mientras se generan collages
+    let collages = [];         // { blob, url, nombre, desde, hasta, ancho, alto }
 
     const $ = id => document.getElementById(id);
 
@@ -850,246 +971,32 @@
 
     try {
         plantilla = JSON.parse(localStorage.getItem(CLAVE_PLANTILLA) || "{}") || {};
-        const c = localStorage.getItem(CLAVE_CIUDAD);
-        if (c) $("ciudad").value = c;
     } catch (e) { plantilla = {}; }
 
-    $("ciudad").addEventListener("change", () => {
-        try { localStorage.setItem(CLAVE_CIUDAD, $("ciudad").value); } catch (e) { /* sin almacenamiento */ }
-    });
+    // Opciones del collage recordadas en el dispositivo.
+    const OPCIONES = ["optPorCollage", "optDisposicion", "optMargen", "optContraste", "optFormato"];
 
-    // ==========================================================
-    // TEXTO: normalizar y comparar
-    // ==========================================================
-
-    function normalizar(t) {
-        return String(t || "")
-            .toLowerCase()
-            .normalize("NFD").replace(/[̀-ͯ]/g, "")
-            .replace(/[^a-z0-9#\- ]+/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-    }
-
-    // Similitud por pares de letras (Dice): tolera bien los errores típicos del OCR.
-    function bigramas(t) {
-        const s = " " + t.replace(/\s+/g, " ") + " ";
-        const m = new Map();
-        for (let i = 0; i < s.length - 1; i++) {
-            const b = s.slice(i, i + 2);
-            m.set(b, (m.get(b) || 0) + 1);
-        }
-        return m;
-    }
-
-    function similitud(a, b, cacheB) {
-        if (!a || !b) return 0;
-        if (a === b) return 1;
-        const A = bigramas(a);
-        const B = cacheB || bigramas(b);
-        let inter = 0, totA = 0, totB = 0;
-        A.forEach((n, k) => { totA += n; if (B.has(k)) inter += Math.min(n, B.get(k)); });
-        B.forEach(n => { totB += n; });
-        return (2 * inter) / (totA + totB);
-    }
-
-    // Similitud de nombres sin importar el orden de las palabras
-    // ("PEREZ GOMEZ JUAN" vs "Juan Perez Gomez").
-    function similitudNombre(a, b, cacheB) {
-        const ordenar = t => t.split(" ").filter(Boolean).sort().join(" ");
-        return Math.max(similitud(a, b, cacheB), similitud(ordenar(a), ordenar(b)));
-    }
-
-    // ==========================================================
-    // DIRECCIONES COLOMBIANAS
-    // ==========================================================
-
-    const TIPOS_VIA = [
-        [/\b(AVENIDA\s+CALLE|AV\.?\s*CALLE|AC)\b\.?/g, "Avenida Calle"],
-        [/\b(AVENIDA\s+CARRERA|AV\.?\s*CARRERA|AK)\b\.?/g, "Avenida Carrera"],
-        [/\b(CALLE|CLL|CALL|CAL|CL)\b\.?/g, "Calle"],
-        [/\b(CARRERA|CARR|CRA|CRR|KRA|KR|CR|K)\b\.?/g, "Carrera"],
-        [/\b(DIAGONAL|DIAG|DG)\b\.?/g, "Diagonal"],
-        [/\b(TRANSVERSAL|TRANSV|TRANS|TV|TR)\b\.?/g, "Transversal"],
-        [/\b(AVENIDA|AV)\b\.?/g, "Avenida"],
-        [/\b(CIRCULAR|CIR|CQ)\b\.?/g, "Circular"]
-    ];
-
-    const COMPLEMENTOS = [
-        [/\b(APARTAMENTO|APTO|APT|AP)\b\.?/g, "Apto"],
-        [/\b(TORRE|TO)\b\.?/g, "Torre"],
-        [/\b(BLOQUE|BLQ|BL)\b\.?/g, "Bloque"],
-        [/\b(MANZANA|MZNA|MZ)\b\.?/g, "Manzana"],
-        [/\b(CASA|CS)\b\.?/g, "Casa"],
-        [/\b(LOCAL|LC)\b\.?/g, "Local"],
-        [/\b(PISO|PS)\b\.?/g, "Piso"],
-        [/\b(INTERIOR|INT)\b\.?/g, "Interior"],
-        [/\b(BARRIO|BRR|B\/)\b\.?/g, "Barrio"]
-    ];
-
-    // Corrige letras que el OCR confunde con números, solo dentro de "palabras" casi numéricas.
-    function corregirDigitos(t) {
-        return t.replace(/\b[0-9OILSBZ]{1,5}[A-Z]?\b/g, tok => {
-            const digitos = (tok.match(/[0-9]/g) || []).length;
-            if (digitos === 0 || digitos < tok.length / 2) return tok;
-            return tok
-                .replace(/O/g, "0")
-                .replace(/[IL]/g, "1")
-                .replace(/S(?=\d)/g, "5")
-                .replace(/Z(?=\d)/g, "2");
+    try {
+        const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
+        OPCIONES.forEach(id => {
+            if (o[id] === undefined) return;
+            if ($(id).type === "checkbox") $(id).checked = !!o[id];
+            else $(id).value = o[id];
         });
+    } catch (e) { /* sin almacenamiento */ }
+
+    OPCIONES.forEach(id => $(id).addEventListener("change", () => {
+        const o = {};
+        OPCIONES.forEach(k => { o[k] = $(k).type === "checkbox" ? $(k).checked : $(k).value; });
+        try { localStorage.setItem(CLAVE_OPCIONES, JSON.stringify(o)); } catch (e) { /* sin almacenamiento */ }
+        if (id === "optMargen") { recibos.forEach(r => { r.tira = null; }); renderizarCapturas(); programarVistaPrevia(); }
+        marcarCollagesDesactualizados();
+    }));
+
+    // Nombre que usa el código heredado de la cámara y la carga de fotos.
+    function renderizarResultados() {
+        renderizarCapturas();
     }
-
-    function normalizarDireccion(textoOCR) {
-
-        let t = String(textoOCR || "")
-            .replace(/^\s*(direcci[oó]n|dir|domicilio|ubicaci[oó]n)\s*[:.\-]?\s*/i, "")
-            .toUpperCase()
-            .normalize("NFD").replace(/[̀-ͯ]/g, "")
-            .replace(/[\r\n]+/g, " ")
-            .replace(/[“”"'`´]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-
-        // Números: N°, No., Nro, Num -> #
-        t = t.replace(/\b(N\s*[°ºo]\.?|NO\.|NRO\.?|NUM\.?|NUMERO)\s*/g, "# ")
-             .replace(/\b(NO|N)\s+(?=\d)/g, "# ")
-             .replace(/[–—_]/g, "-")
-             .replace(/\s*-\s*/g, "-");
-
-        t = corregirDigitos(t);
-
-        TIPOS_VIA.forEach(([re, rep]) => { t = t.replace(re, rep); });
-        COMPLEMENTOS.forEach(([re, rep]) => { t = t.replace(re, rep); });
-
-        // Patrón principal: <vía> <número><letra?> [bis] # <cruce><letra?>-<placa>
-        const re = /(Avenida Calle|Avenida Carrera|Calle|Carrera|Diagonal|Transversal|Avenida|Circular)\s*(\d{1,3})\s*([A-Z]{0,2})?\s*(BIS)?\s*([A-Z])?\s*#?\s*(\d{1,3})\s*([A-Z]{0,2})?\s*(BIS)?\s*-\s*(\d{1,3})/i;
-        const m = t.match(re);
-
-        if (!m) {
-            return { texto: capitalizar(t), valida: false, via: null, num: null };
-        }
-
-        const via = m[1];
-        const num = m[2] + (m[3] ? m[3] : "") + (m[4] ? " Bis" : "") + (m[5] ? " " + m[5] : "");
-        const cruce = m[6] + (m[7] ? m[7] : "") + (m[8] ? " Bis" : "");
-        const placa = m[9];
-
-        const resto = t.slice(t.indexOf(m[0]) + m[0].length).trim().replace(/^[,.\-\s]+/, "");
-        const principal = `${via} ${num} # ${cruce}-${placa}`;
-
-        return {
-            texto: principal + (resto ? " " + capitalizar(resto) : ""),
-            principal,
-            valida: true,
-            via,
-            num: m[2] + (m[3] || "")
-        };
-    }
-
-    // Quita etiquetas impresas ("Suscriptor:", "Nombre:") y corrige números leídos como letras.
-    function limpiarNombre(texto) {
-        let t = String(texto || "").replace(/[\r\n]+/g, " ").trim();
-        const etiqueta = /^(nombre|suscriptor|cliente|usuario|titular|propietario|se[ñn]or(a|es)?|sr\.?|sra\.?)\s*[:.\-]?\s*/i;
-        while (etiqueta.test(t)) t = t.replace(etiqueta, "");
-        t = t.replace(/0/g, "O").replace(/1/g, "I").replace(/5/g, "S").replace(/8/g, "B");
-        t = t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñÜü.\s]/g, " ").replace(/\s+/g, " ").trim();
-        return capitalizar(t);
-    }
-
-    function capitalizar(t) {
-        return t.toLowerCase().replace(/(^|\s)([a-zñ])/g, (x, a, b) => a + b.toUpperCase());
-    }
-
-    // ==========================================================
-    // PASO 1: CSV de clientes (maestro)
-    // ==========================================================
-
-    function parseCSV(text) {
-        text = text.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-        const primera = text.split("\n")[0] || "";
-        const sep = primera.split(";").length > primera.split(",").length ? ";" : ",";
-        const rows = [];
-        let row = [], field = "", q = false;
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            if (q) {
-                if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
-                else field += ch;
-            } else if (ch === '"') q = true;
-            else if (ch === sep) { row.push(field); field = ""; }
-            else if (ch === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-            else field += ch;
-        }
-        if (field.length || row.length) { row.push(field); rows.push(row); }
-        return rows.filter(r => r.some(c => c.trim() !== ""));
-    }
-
-    const num = s => {
-        s = String(s == null ? "" : s).trim();
-        if (/^-?\d+,\d+$/.test(s)) s = s.replace(",", ".");
-        return parseFloat(s);
-    };
-
-    $("btnMaestro").addEventListener("click", () => $("inputMaestro").click());
-
-    $("inputMaestro").addEventListener("change", async e => {
-
-        const f = e.target.files[0];
-        e.target.value = "";
-        if (!f) return;
-
-        const filas = parseCSV(await f.text());
-        if (filas.length < 2) {
-            setStatus($("statusMaestro"), "❌ El CSV no tiene datos.", "error");
-            return;
-        }
-
-        const h = filas[0].map(x => normalizar(x));
-        const buscar = pruebas => h.findIndex(x => pruebas.some(p => typeof p === "string" ? x === p : p.test(x)));
-
-        const iNombre = buscar([/nombre/, /cliente/, "name"]);
-        const iLat = buscar(["lat", /latitud/, "latitude"]);
-        const iLon = buscar(["lon", "lng", /longitud/, "longitude"]);
-        const iCod = buscar([/codigo/, /cuenta/, /contrato/, "cod", "id", /suscriptor/, /referencia/]);
-        const iDir = buscar([/direccion/, "dir", "address"]);
-
-        if (iNombre < 0 || iLat < 0 || iLon < 0) {
-            setStatus($("statusMaestro"), "❌ No encontré las columnas Nombre, lat y lon en ese CSV.", "error");
-            return;
-        }
-
-        maestro = filas.slice(1).map(r => {
-            const lat = num(r[iLat]), lon = num(r[iLon]);
-            const m = {
-                nombre: (r[iNombre] || "").trim(),
-                lat, lon,
-                codigo: iCod >= 0 ? (r[iCod] || "").trim() : "",
-                direccion: iDir >= 0 ? (r[iDir] || "").trim() : ""
-            };
-            m._n = normalizar(m.nombre);
-            m._nb = bigramas(m._n);
-            m._c = m.codigo.replace(/\D/g, "");
-            m._d = m.direccion ? normalizar(normalizarDireccion(m.direccion).texto) : "";
-            m._db = m._d ? bigramas(m._d) : null;
-            m.valido = isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-            return m;
-        }).filter(m => m.nombre);
-
-        const conCoord = maestro.filter(m => m.valido).length;
-
-        setStatus(
-            $("statusMaestro"),
-            `✅ ${maestro.length} clientes cargados (${conCoord} con coordenadas)` +
-            (iCod >= 0 ? " · se usará la columna de código" : "") +
-            (iDir >= 0 ? " · se usará la columna de dirección" : "") + ".",
-            "success"
-        );
-
-        // Si ya había resultados, se vuelven a cruzar.
-        recibos.forEach(r => { if (r.resultado) cruzarConMaestro(r); });
-        renderizarResultados();
-    });
 
     // ==========================================================
     // PASO 2: cargar fotos / PDF
@@ -1141,6 +1048,7 @@
         }
 
         setStatus($("statusRecibos"), `✅ ${recibos.length} recibo(s) listos (${agregados} nuevo(s)).`, "success");
+        marcarCollagesDesactualizados();
         indiceVista = Math.max(0, recibos.length - agregados);
         await mostrarRecibo();
         renderizarResultados();
@@ -1165,12 +1073,13 @@
 
     $("btnLimpiarRecibos").addEventListener("click", () => {
         if (leyendo) return;
-        if (recibos.length && !confirm(`¿Quitar los ${recibos.length} recibos cargados y sus resultados?`)) return;
+        if (recibos.length && !confirm(`¿Quitar las ${recibos.length} capturas?`)) return;
         recibos = [];
         indiceVista = 0;
+        marcarCollagesDesactualizados();
         mostrarRecibo();
         renderizarResultados();
-        setStatus($("statusRecibos"), "Aún no hay recibos cargados.");
+        setStatus($("statusRecibos"), "Aún no hay capturas.");
     });
 
     async function cargarImagen(recibo) {
@@ -1223,6 +1132,7 @@
             const zonas = r && r.zonas ? r.zonas : plantilla;
             delete zonas[zonaActiva];
             guardarPlantilla();
+            zonasCambiaron(zonas === plantilla ? null : r);
             renderizarBotonesZona();
             dibujarLienzo();
         });
@@ -1230,6 +1140,7 @@
         const bp = $("btnUsarPlantilla");
         if (bp) bp.addEventListener("click", () => {
             recibos[indiceVista].zonas = null;
+            zonasCambiaron(recibos[indiceVista]);
             renderizarBotonesZona();
             dibujarLienzo();
         });
@@ -1264,6 +1175,8 @@
     }
 
     function dibujarLienzo() {
+
+        if (!arrastre) programarVistaPrevia();
 
         ctx.clearRect(0, 0, lienzo.width, lienzo.height);
 
@@ -1350,6 +1263,8 @@
                 try { localStorage.setItem("ocrRecibos.aspecto", String(lienzo.width / lienzo.height)); } catch (e) { /* sin almacenamiento */ }
             }
 
+            zonasCambiaron(destino === plantilla ? null : r);
+
             // Avanza sola a la siguiente zona que falte.
             const falta = ZONAS.find(z => z.id !== "codigo" && !destino[z.id]);
             if (falta) zonaActiva = falta.id;
@@ -1370,74 +1285,65 @@
         if (indiceVista < recibos.length - 1) { indiceVista++; mostrarRecibo(); }
     });
 
-    $("btnProbar").addEventListener("click", async () => {
-        const r = recibos[indiceVista];
-        if (!r) return;
-        if (!ZONAS.some(z => zonasDe(r)[z.id])) {
-            $("pruebaLectura").textContent = "⚠️ Marca primero al menos una zona.";
-            return;
-        }
-        $("pruebaLectura").textContent = "🔎 Leyendo… (la primera vez descarga el idioma español, puede tardar)";
-        try {
-            const res = await leerRecibo(r);
-            $("pruebaLectura").innerHTML =
-                `<b>Nombre:</b> ${escapeHTML(res.nombre || "—")}<br>` +
-                `<b>Dirección:</b> ${escapeHTML(res.direccion.texto || "—")} ${res.direccion.valida ? "✅" : "🟡 (formato no reconocido)"}<br>` +
-                (res.codigo ? `<b>Código:</b> ${escapeHTML(res.codigo)}<br>` : "") +
-                `<small>Confianza del OCR: ${Math.round(res.confianza)}%</small>`;
-        } catch (err) {
-            $("pruebaLectura").textContent = "❌ " + err.message;
-        }
-    });
 
     // ==========================================================
-    // OCR
+    // RECORTES ESTRICTOS DE LAS ZONAS
     // ==========================================================
 
-    async function obtenerWorker() {
-        if (workerOCR) return workerOCR;
-        if (!window.Tesseract) throw new Error("no cargó el motor OCR (revisa tu conexión a internet)");
-        workerOCR = await Tesseract.createWorker("spa", 1);
-        await workerOCR.setParameters({
-            tessedit_pageseg_mode: "6",       // bloque de texto uniforme
-            preserve_interword_spaces: "1"
-        });
-        return workerOCR;
+    function margenActual() {
+        return (parseFloat($("optMargen").value) || 0) / 100;
     }
 
-    // Recorta la zona, la agranda y la pasa a escala de grises con buen contraste.
-    function recortarZona(img, zona) {
+    // Recorta la zona tal cual está marcada (más el margen elegido, 0 % por defecto).
+    function recortarZona(img, zona, margen) {
 
-        const pad = 0.01;
-        const x = Math.max(0, (zona.x - pad) * img.width);
-        const y = Math.max(0, (zona.y - pad) * img.height);
-        const w = Math.min(img.width - x, (zona.w + 2 * pad) * img.width);
-        const h = Math.min(img.height - y, (zona.h + 2 * pad) * img.height);
+        const x = Math.max(0, (zona.x - margen) * img.width);
+        const y = Math.max(0, (zona.y - margen) * img.height);
+        const w = Math.max(1, Math.min(img.width - x, (zona.w + 2 * margen) * img.width));
+        const h = Math.max(1, Math.min(img.height - y, (zona.h + 2 * margen) * img.height));
 
-        const escala = Math.max(1, Math.min(3, 1400 / w));
         const c = document.createElement("canvas");
-        c.width = Math.round(w * escala);
-        c.height = Math.round(h * escala);
+        c.width = Math.round(w);
+        c.height = Math.round(h);
+        c.getContext("2d").drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
+        return c;
+    }
+
+    async function recortesDe(recibo) {
+        const img = await createImageBitmap(recibo.blob);
+        const zonas = zonasDe(recibo);
+        const margen = margenActual();
+        const out = {};
+        ZONAS.forEach(z => { if (zonas[z.id]) out[z.id] = recortarZona(img, zonas[z.id], margen); });
+        img.close && img.close();
+        return out;
+    }
+
+    // Blanco y negro con contraste estirado: ayuda mucho a cualquier OCR.
+    function mejorarContraste(c) {
 
         const g = c.getContext("2d");
-        g.imageSmoothingQuality = "high";
-        g.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
-
         const datos = g.getImageData(0, 0, c.width, c.height);
         const d = datos.data;
-        let min = 255, max = 0;
-        const gris = new Uint8ClampedArray(d.length / 4);
+        const gris = new Float32Array(d.length / 4);
+        const hist = new Uint32Array(256);
 
         for (let i = 0, j = 0; i < d.length; i += 4, j++) {
             const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
             gris[j] = v;
-            if (v < min) min = v;
-            if (v > max) max = v;
+            hist[v | 0]++;
         }
 
-        const rango = Math.max(1, max - min);
+        // Percentiles 2 % y 98 % para que una mancha no arruine el contraste.
+        const total = gris.length;
+        let acum = 0, bajo = 0, alto = 255;
+        for (let v = 0; v < 256; v++) { acum += hist[v]; if (acum >= total * 0.02) { bajo = v; break; } }
+        acum = 0;
+        for (let v = 255; v >= 0; v--) { acum += hist[v]; if (acum >= total * 0.02) { alto = v; break; } }
+        const rango = Math.max(1, alto - bajo);
+
         for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-            const v = ((gris[j] - min) / rango) * 255;
+            const v = Math.max(0, Math.min(255, ((gris[j] - bajo) / rango) * 255));
             d[i] = d[i + 1] = d[i + 2] = v;
         }
 
@@ -1445,576 +1351,450 @@
         return c;
     }
 
-    async function leerRecibo(recibo) {
+    // Tira pequeña con las zonas lado a lado (para ver y revisar cada captura).
+    async function tiraMiniatura(recibo, alto) {
 
-        const worker = await obtenerWorker();
-        const img = await cargarImagen(recibo);
-        const zonas = zonasDe(recibo);
+        const recs = await recortesDe(recibo);
+        const lista = ZONAS.filter(z => recs[z.id]).map(z => recs[z.id]);
 
-        const res = { nombre: "", nombreCrudo: "", direccion: { texto: "", valida: false }, direccionCruda: "", codigo: "", confianza: 0, recortes: {} };
-        const confs = [];
+        if (!lista.length) return null;
 
-        for (const z of ZONAS) {
-            if (!zonas[z.id]) continue;
-            const c = recortarZona(img, zonas[z.id]);
-            const { data } = await worker.recognize(c);
-            const texto = (data.text || "").trim();
-            confs.push(data.confidence || 0);
+        const escalas = lista.map(c => alto / c.height);
+        const ancho = lista.reduce((s, c, i) => s + c.width * escalas[i], 0) + (lista.length - 1) * 8;
 
-            // Miniatura del recorte para revisar a ojo.
-            const mini = document.createElement("canvas");
-            const esc = Math.min(1, 460 / c.width);
-            mini.width = Math.round(c.width * esc);
-            mini.height = Math.round(c.height * esc);
-            mini.getContext("2d").drawImage(c, 0, 0, mini.width, mini.height);
-            res.recortes[z.id] = mini.toDataURL("image/jpeg", 0.7);
+        const t = document.createElement("canvas");
+        t.width = Math.min(1600, Math.round(ancho));
+        t.height = alto;
 
-            if (z.id === "nombre") {
-                res.nombreCrudo = texto;
-                res.nombre = limpiarNombre(texto);
-            } else if (z.id === "direccion") {
-                res.direccionCruda = texto;
-                res.direccion = normalizarDireccion(texto);
-            } else if (z.id === "codigo") {
-                res.codigo = corregirDigitos(texto.toUpperCase()).replace(/[^0-9A-Z\-]/g, "");
+        const g = t.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, t.width, t.height);
+
+        let x = 0;
+        lista.forEach((c, i) => {
+            const w = c.width * escalas[i];
+            g.drawImage(c, x, 0, w, alto);
+            x += w;
+            if (i < lista.length - 1) {
+                g.fillStyle = "#cbd5e1";
+                g.fillRect(x + 3, 0, 2, alto);
+                x += 8;
             }
-        }
-
-        img.close && img.close();
-        res.confianza = confs.length ? confs.reduce((a, b) => a + b, 0) / confs.length : 0;
-        return res;
-    }
-
-    // ==========================================================
-    // CRUZAR CON LA LISTA DE CLIENTES
-    // ==========================================================
-
-    function cruzarConMaestro(recibo) {
-
-        const res = recibo.resultado;
-        res.sugerencias = [];
-
-        if (!maestro.length) return;
-
-        const n = normalizar(res.nombre);
-        const d = res.direccion.valida ? normalizar(res.direccion.principal) : normalizar(res.direccion.texto);
-        const c = (res.codigo || "").replace(/\D/g, "");
-
-        const puntuados = maestro.map(m => {
-            let s = 0, motivo = "";
-            if (c && m._c && c.length >= 3 && m._c === c) { s = 1; motivo = "código"; }
-            const sn = n ? similitudNombre(n, m._n, m._nb) : 0;
-            if (sn > s) { s = sn; motivo = "nombre"; }
-            if (d && m._d) {
-                const sd = similitud(d, m._d, m._db) * 0.97;
-                if (sd > s) { s = sd; motivo = "dirección"; }
-                // Nombre y dirección parecidos a la vez: más confianza.
-                if (sn > 0.5 && sd > 0.5) {
-                    const comb = Math.min(1, (sn + sd) / 2 + 0.1);
-                    if (comb > s) { s = comb; motivo = "nombre + dirección"; }
-                }
-            }
-            return { m, s, motivo };
-        })
-            .filter(x => x.s >= 0.35)
-            .sort((a, b) => b.s - a.s)
-            .slice(0, 5);
-
-        res.sugerencias = puntuados;
-
-        // Asignación automática solo si no la eligió el usuario.
-        if (!res.eleccionManual) {
-            const mejor = puntuados[0];
-            if (mejor && mejor.s >= UMBRAL_REVISAR && mejor.m.valido) {
-                res.cliente = mejor.m;
-                res.puntaje = mejor.s;
-                res.motivo = mejor.motivo;
-                res.lat = mejor.m.lat;
-                res.lon = mejor.m.lon;
-                res.fuente = "lista";
-            } else if (res.fuente === "lista") {
-                res.cliente = null;
-                res.lat = res.lon = null;
-                res.fuente = null;
-            }
-        }
-    }
-
-    function estadoDe(res) {
-        if (!res) return { clase: "", texto: "Sin leer" };
-        if (res.fuente === "manual") return { clase: "manual", texto: "📍 Ubicado a mano" };
-        if (res.fuente === "lista" && res.eleccionManual) return { clase: "ok", texto: "✅ Elegido por ti" };
-        if (res.fuente === "lista" && res.puntaje >= UMBRAL_SEGURO) return { clase: "ok", texto: "✅ Coincide" };
-        if (res.fuente === "lista") return { clase: "revisar", texto: "🟡 Revisar coincidencia" };
-        if (res.fuente === "geo") return { clase: "aprox", texto: res.geoNivel === "calle" ? "🌎 Aprox. (solo la calle)" : "🌎 Aprox. (dirección)" };
-        if (!res.direccion.valida && !res.nombre) return { clase: "sin", texto: "⚪ No se pudo leer" };
-        return { clase: "sin", texto: "⚪ Sin coordenadas" };
-    }
-
-    // ==========================================================
-    // PASO 4: leer todos
-    // ==========================================================
-
-    $("btnLeer").addEventListener("click", async () => {
-
-        if (leyendo) return;
-
-        if (!recibos.length) {
-            setStatus($("statusLectura"), "⚠️ Primero carga los recibos (paso 2).", "warning");
-            return;
-        }
-
-        if (!plantilla.direccion && !plantilla.nombre && !recibos.some(r => r.zonas)) {
-            setStatus($("statusLectura"), "⚠️ Marca al menos la zona de dirección o de nombre (paso 3).", "warning");
-            return;
-        }
-
-        const pendientes = recibos.filter(r => !r.resultado);
-        const lista = pendientes.length ? pendientes : recibos;
-
-        if (!pendientes.length && !confirm("Todos los recibos ya se leyeron. ¿Leerlos otra vez? (se pierden las correcciones)")) return;
-
-        leyendo = true;
-        cancelar = false;
-        $("btnLeer").disabled = true;
-        $("btnCancelar").hidden = false;
-
-        const inicio = Date.now();
-
-        try {
-            setStatus($("statusLectura"), "⏳ Preparando el lector (la primera vez descarga el idioma español)…");
-            await obtenerWorker();
-
-            for (let i = 0; i < lista.length; i++) {
-
-                if (cancelar) break;
-
-                const r = lista[i];
-                const trans = (Date.now() - inicio) / 1000;
-                const falta = i ? Math.round((trans / i) * (lista.length - i)) : null;
-
-                setStatus($("statusLectura"),
-                    `🔎 Leyendo recibo ${i + 1} de ${lista.length}` +
-                    (falta !== null ? ` · faltan ~${falta >= 60 ? Math.round(falta / 60) + " min" : falta + " s"}` : "") + "…");
-                $("barra").style.width = `${(i / lista.length) * 100}%`;
-
-                try {
-                    r.resultado = await leerRecibo(r);
-                    cruzarConMaestro(r);
-                } catch (err) {
-                    r.resultado = { nombre: "", direccion: { texto: "", valida: false }, error: err.message, sugerencias: [], recortes: {} };
-                }
-
-                renderizarResultados();
-            }
-
-            $("barra").style.width = "100%";
-
-            const leidos = recibos.filter(r => r.resultado).length;
-            setStatus($("statusLectura"),
-                cancelar
-                    ? `⏹️ Detenido. ${leidos} de ${recibos.length} recibos leídos. Pulsa ▶️ para seguir con los que faltan.`
-                    : `✅ ${leidos} recibos leídos. Revisa los que están en amarillo o rojo y luego descarga el CSV.`,
-                cancelar ? "warning" : "success");
-
-        } catch (err) {
-            setStatus($("statusLectura"), "❌ " + err.message, "error");
-        }
-
-        leyendo = false;
-        $("btnLeer").disabled = false;
-        $("btnCancelar").hidden = true;
-    });
-
-    $("btnCancelar").addEventListener("click", () => { cancelar = true; });
-
-    // ==========================================================
-    // TABLA DE RESULTADOS
-    // ==========================================================
-
-    function renderizarResultados() {
-
-        const tbody = $("tbody");
-
-        if (!recibos.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-hint">Los resultados aparecerán aquí.</td></tr>';
-            $("resumen").innerHTML = "";
-            return;
-        }
-
-        const conteo = {};
-        recibos.forEach(r => {
-            const e = estadoDe(r.resultado);
-            conteo[e.texto] = conteo[e.texto] || { n: 0, clase: e.clase };
-            conteo[e.texto].n++;
         });
 
-        $("resumen").innerHTML = Object.entries(conteo)
-            .map(([t, v]) => `<span class="chip ${v.clase}">${t}: ${v.n}</span>`).join("");
-
-        tbody.innerHTML = recibos.map((r, i) => {
-
-            const res = r.resultado;
-            const e = estadoDe(res);
-
-            if (!res) {
-                return `<tr data-i="${i}">
-                    <td class="num">${i + 1}</td>
-                    <td colspan="5" style="color:#94a3b8">${escapeHTML(r.archivo)} · sin leer</td>
-                    <td><div class="acciones-fila">
-                        <button class="btn-mini" data-accion="zona">✂️ Ajustar zonas</button>
-                    </div></td>
-                </tr>`;
-            }
-
-            const opciones = (res.sugerencias || []).map((s, k) =>
-                `<option value="${k}"${res.cliente === s.m ? " selected" : ""}>${escapeHTML(s.m.nombre)} · ${Math.round(s.s * 100)}% (${s.motivo})${s.m.valido ? "" : " · sin coord."}</option>`
-            ).join("");
-
-            return `<tr data-i="${i}">
-                <td class="num">${i + 1}</td>
-                <td>
-                    ${res.recortes && res.recortes.nombre ? `<img class="recorte" src="${res.recortes.nombre}" alt="Recorte del nombre">` : ""}
-                    <input type="text" data-campo="nombre" value="${escapeHTML(res.nombre)}" placeholder="Nombre">
-                </td>
-                <td>
-                    ${res.recortes && res.recortes.direccion ? `<img class="recorte" src="${res.recortes.direccion}" alt="Recorte de la dirección">` : ""}
-                    <input type="text" data-campo="direccion" value="${escapeHTML(res.direccion.texto)}" placeholder="Dirección">
-                    ${res.direccionCruda && res.direccionCruda !== res.direccion.texto ? `<div class="texto-crudo">OCR: ${escapeHTML(res.direccionCruda)}</div>` : ""}
-                    ${res.error ? `<div class="texto-crudo" style="color:#b91c1c">Error: ${escapeHTML(res.error)}</div>` : ""}
-                </td>
-                <td>
-                    ${maestro.length
-                        ? `<select data-campo="cliente">
-                               <option value="">— Ninguno —</option>
-                               ${opciones}
-                           </select>`
-                        : '<span style="color:#94a3b8">Sin lista cargada</span>'}
-                    ${res.codigo ? `<div class="texto-crudo">Código: ${escapeHTML(res.codigo)}</div>` : ""}
-                </td>
-                <td class="coords">${res.lat != null ? `${res.lat.toFixed(6)}<br>${res.lon.toFixed(6)}` : "—"}</td>
-                <td><span class="chip ${e.clase}">${e.texto}</span></td>
-                <td><div class="acciones-fila">
-                    <button class="btn-mini" data-accion="mapa">📍 Ubicar en mapa</button>
-                    <button class="btn-mini" data-accion="geo">🌎 Buscar dirección</button>
-                    <button class="btn-mini" data-accion="zona">✂️ Ajustar zonas</button>
-                    <button class="btn-mini" data-accion="releer">🔁 Leer otra vez</button>
-                </div></td>
-            </tr>`;
-        }).join("");
+        return t.toDataURL("image/jpeg", 0.8);
     }
 
-    // Cambios dentro de la tabla (delegados).
-    $("tbody").addEventListener("change", e => {
+    // Vista previa bajo el editor de zonas: así queda el recorte de este recibo.
+    let temporizadorVista = null;
 
-        const tr = e.target.closest("tr[data-i]");
-        if (!tr) return;
-        const r = recibos[+tr.getAttribute("data-i")];
-        const res = r && r.resultado;
-        if (!res) return;
-
-        const campo = e.target.getAttribute("data-campo");
-
-        if (campo === "nombre") {
-            res.nombre = e.target.value.trim();
-            if (!res.eleccionManual) cruzarConMaestro(r);
-        } else if (campo === "direccion") {
-            res.direccion = normalizarDireccion(e.target.value);
-            if (res.fuente === "geo") { res.lat = res.lon = null; res.fuente = null; }
-            if (!res.eleccionManual) cruzarConMaestro(r);
-        } else if (campo === "cliente") {
-            const s = e.target.value === "" ? null : res.sugerencias[+e.target.value];
-            res.eleccionManual = true;
-            if (s && s.m.valido) {
-                res.cliente = s.m;
-                res.puntaje = s.s;
-                res.lat = s.m.lat;
-                res.lon = s.m.lon;
-                res.fuente = "lista";
-            } else {
-                res.cliente = null;
-                if (res.fuente === "lista") { res.lat = res.lon = null; res.fuente = null; }
+    function programarVistaPrevia() {
+        clearTimeout(temporizadorVista);
+        temporizadorVista = setTimeout(async () => {
+            const r = recibos[indiceVista];
+            const cont = $("pruebaLectura");
+            if (!r || !ZONAS.some(z => zonasDe(r)[z.id])) {
+                cont.innerHTML = r ? "Marca las zonas para ver aquí cómo queda el recorte." : "";
+                return;
             }
+            r.tira = await tiraMiniatura(r, 70);
+            cont.innerHTML = `<b>Así queda el recorte de este recibo:</b><br><img class="tira" src="${r.tira}" alt="Recorte de las zonas">`;
+        }, 250);
+    }
+
+    // ==========================================================
+    // LISTA DE CAPTURAS
+    // ==========================================================
+
+    function numeroFormateado(n) {
+        return String(n).padStart(recibos.length >= 100 ? 3 : 2, "0");
+    }
+
+    function renderizarCapturas() {
+
+        const cont = $("listaCapturas");
+        $("totalCapturas").textContent = recibos.length;
+
+        if (!recibos.length) {
+            cont.innerHTML = '<div class="empty-hint">Aún no hay capturas. Usa 📷 Modo cámara o carga fotos / PDF en el paso 1.</div>';
+            return;
         }
 
-        renderizarResultados();
-    });
+        const sinZonas = !ZONAS.some(z => plantilla[z.id]) && !recibos.some(r => r.zonas);
 
-    $("tbody").addEventListener("click", async e => {
+        cont.innerHTML = recibos.map((r, i) => `
+            <div class="captura" data-i="${i}">
+                <div class="captura-num">${numeroFormateado(i + 1)}</div>
+                <div class="captura-cuerpo">
+                    ${sinZonas
+                        ? '<span class="nota" style="margin:0">Marca las zonas en el paso 2</span>'
+                        : `<img class="tira" alt="Recorte del recibo ${i + 1}" ${r.tira ? `src="${r.tira}"` : ""}>`}
+                    <small>${escapeHTML(r.archivo)}${r.zonas ? " · ✂️ zonas propias" : ""}</small>
+                </div>
+                <div class="captura-acciones">
+                    <button type="button" class="btn-mini" data-accion="zona">✂️ Zonas</button>
+                    <button type="button" class="btn-mini" data-accion="quitar">🗑️</button>
+                </div>
+            </div>
+        `).join("");
+
+        if (!sinZonas) generarTirasPendientes();
+    }
+
+    let generandoTiras = false;
+
+    async function generarTirasPendientes() {
+
+        if (generandoTiras) return;
+        generandoTiras = true;
+
+        for (let i = 0; i < recibos.length; i++) {
+            const r = recibos[i];
+            if (!r.tira) {
+                try { r.tira = await tiraMiniatura(r, 56); } catch (e) { r.tira = null; }
+            }
+            const img = document.querySelector(`.captura[data-i="${i}"] img.tira`);
+            if (img && r.tira && img.getAttribute("src") !== r.tira) img.src = r.tira;
+        }
+
+        generandoTiras = false;
+    }
+
+    $("listaCapturas").addEventListener("click", async e => {
 
         const b = e.target.closest("button[data-accion]");
         if (!b) return;
 
-        const i = +b.closest("tr").getAttribute("data-i");
+        const i = +b.closest(".captura").getAttribute("data-i");
         const r = recibos[i];
-        const accion = b.getAttribute("data-accion");
+        if (!r) return;
 
-        if (accion === "zona") {
+        if (b.getAttribute("data-accion") === "quitar") {
+            recibos.splice(i, 1);
+            indiceVista = Math.min(indiceVista, Math.max(0, recibos.length - 1));
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            mostrarRecibo();
+        } else {
             indiceVista = i;
             if (!r.zonas) r.zonas = JSON.parse(JSON.stringify(plantilla));
+            r.tira = null;
             await mostrarRecibo();
             $("lienzoZonas").scrollIntoView({ behavior: "smooth", block: "center" });
-            setStatus($("statusLectura"), `✂️ Ajusta las zonas del recibo ${i + 1} y luego pulsa 🔁 Leer otra vez en su fila.`);
-        } else if (accion === "releer") {
-            if (leyendo) return;
-            b.disabled = true;
-            b.textContent = "⏳ Leyendo…";
-            try {
-                const previo = r.resultado;
-                r.resultado = await leerRecibo(r);
-                if (previo && previo.fuente === "manual") {
-                    Object.assign(r.resultado, { lat: previo.lat, lon: previo.lon, fuente: "manual" });
-                }
-                cruzarConMaestro(r);
-            } catch (err) {
-                setStatus($("statusLectura"), "❌ " + err.message, "error");
-            }
-            renderizarResultados();
-        } else if (accion === "mapa") {
-            abrirMapa(i);
-        } else if (accion === "geo") {
-            b.disabled = true;
-            b.textContent = "⏳ Buscando…";
-            await geocodificar(r);
-            renderizarResultados();
         }
     });
 
     // ==========================================================
-    // COORDENADAS POR DIRECCIÓN (OpenStreetMap / Nominatim)
+    // COLLAGES
     // ==========================================================
-    //
-    // Es gratuito y sin clave, pero las direcciones colombianas con placa
-    // ("# 34-20") casi nunca están numeradas en OpenStreetMap. Por eso se
-    // intenta primero la dirección completa y, si no aparece, solo la calle:
-    // en ese caso la ubicación es aproximada (queda sobre la calle, no en la
-    // casa) y conviene ajustarla con 📍 Ubicar en mapa.
 
-    const esperar = ms => new Promise(r => setTimeout(r, ms));
-    let ultimaConsulta = 0;
-
-    async function consultarNominatim(q) {
-        // Máximo 1 consulta por segundo (norma del servicio gratuito).
-        const espera = 1100 - (Date.now() - ultimaConsulta);
-        if (espera > 0) await esperar(espera);
-        ultimaConsulta = Date.now();
-
-        const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=co&accept-language=es&q=" +
-            encodeURIComponent(q);
-        const resp = await fetch(url, { headers: { "Accept": "application/json" } });
-        if (!resp.ok) throw new Error("el buscador de direcciones no respondió (" + resp.status + ")");
-        const datos = await resp.json();
-        return datos && datos[0] ? { lat: +datos[0].lat, lon: +datos[0].lon } : null;
+    function marcarCollagesDesactualizados() {
+        if (!collages.length) return;
+        collages.forEach(c => URL.revokeObjectURL(c.url));
+        collages = [];
+        $("listaCollages").innerHTML =
+            '<div class="nota">Las capturas o las opciones cambiaron. Pulsa 🧩 Generar collages otra vez.</div>';
+        $("accionesCollages").hidden = true;
     }
 
-    async function geocodificar(r) {
+    const PAD = 14;          // espacio interno de cada fila
+    const HUECO = 24;        // espacio entre columnas
+    const ANCHO_NUM = 150;   // columna del número
+    const ALTO_CABECERA = 96;
 
-        const res = r.resultado;
-        if (!res || !res.direccion.texto) return false;
+    function dibujarNumero(g, n, x, y, w, h) {
+        g.fillStyle = "#111827";
+        g.font = "bold 56px Arial";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(n, x + w / 2, y + h / 2);
+        g.textAlign = "left";
+        g.textBaseline = "alphabetic";
+    }
 
-        const ciudad = $("ciudad").value.trim();
-        const sufijo = (ciudad ? ", " + ciudad : "") + ", Colombia";
+    async function construirCollage(lote, desde, totalLotes, indiceLote, opciones) {
 
-        try {
-            let p = null, nivel = "direccion";
+        const zonasUsadas = ZONAS.filter(z => lote.some(r => zonasDe(r)[z.id]));
 
-            if (res.direccion.valida) {
-                p = await consultarNominatim(res.direccion.principal.replace("#", "") + sufijo);
-                if (!p && res.direccion.via) {
-                    nivel = "calle";
-                    p = await consultarNominatim(`${res.direccion.via} ${res.direccion.num}${sufijo}`);
-                }
-            } else {
-                p = await consultarNominatim(res.direccion.texto + sufijo);
-            }
+        // 1) Recortes escalados al mismo ancho por columna (todas las filas quedan parejas).
+        const filas = [];
 
-            if (p) {
-                res.lat = p.lat;
-                res.lon = p.lon;
-                res.fuente = "geo";
-                res.geoNivel = nivel;
-                return true;
-            }
-        } catch (err) {
-            setStatus($("statusLectura"), "❌ " + err.message, "error");
+        for (let k = 0; k < lote.length; k++) {
+
+            const recs = await recortesDe(lote[k]);
+            const celdas = {};
+
+            zonasUsadas.forEach(z => {
+                const c = recs[z.id];
+                if (!c) return;
+                const anchoCol = opciones.disposicion === "apilado" ? 1100 : z.ancho;
+                const esc = Math.min(3, anchoCol / c.width);
+                const e = document.createElement("canvas");
+                e.width = Math.round(c.width * esc);
+                e.height = Math.round(c.height * esc);
+                const g = e.getContext("2d");
+                g.imageSmoothingQuality = "high";
+                g.drawImage(c, 0, 0, e.width, e.height);
+                if (opciones.contraste) mejorarContraste(e);
+                celdas[z.id] = e;
+            });
+
+            const alto = opciones.disposicion === "apilado"
+                ? zonasUsadas.reduce((s, z) => s + (celdas[z.id] ? celdas[z.id].height + 10 : 0), 0) - 10 + 2 * PAD
+                : Math.max(60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * PAD;
+
+            filas.push({ numero: desde + k + 1, celdas, alto: Math.max(90, alto) });
         }
 
-        return false;
+        // 2) Tamaño del lienzo.
+        const anchoContenido = opciones.disposicion === "apilado"
+            ? 1100
+            : zonasUsadas.reduce((s, z) => s + z.ancho, 0) + (zonasUsadas.length - 1) * HUECO;
+
+        const W = ANCHO_NUM + anchoContenido + 2 * PAD;
+        const H = ALTO_CABECERA + filas.reduce((s, f) => s + f.alto, 0) + PAD;
+
+        const c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        const g = c.getContext("2d");
+
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, W, H);
+
+        // 3) Cabecera: lote y títulos de columna.
+        const hasta = desde + lote.length;
+        g.fillStyle = "#111827";
+        g.font = "bold 30px Arial";
+        g.fillText(`Lote ${indiceLote + 1} de ${totalLotes} · recibos ${desde + 1} a ${hasta}`, PAD, 40);
+
+        g.font = "bold 22px Arial";
+        g.fillStyle = "#475569";
+        g.fillText("N°", PAD + 40, 82);
+
+        if (opciones.disposicion !== "apilado") {
+            let x = ANCHO_NUM + PAD;
+            zonasUsadas.forEach(z => {
+                g.fillText(z.nombre.replace(/^\S+\s/, "").toUpperCase(), x, 82);
+                x += z.ancho + HUECO;
+            });
+        } else {
+            g.fillText(zonasUsadas.map(z => z.nombre.replace(/^\S+\s/, "")).join(" / ").toUpperCase(), ANCHO_NUM + PAD, 82);
+        }
+
+        g.fillStyle = "#111827";
+        g.fillRect(0, ALTO_CABECERA - 4, W, 3);
+
+        // 4) Filas.
+        let y = ALTO_CABECERA;
+
+        filas.forEach((f, k) => {
+
+            if (k % 2 === 1) {
+                g.fillStyle = "#f8fafc";
+                g.fillRect(0, y, W, f.alto);
+            }
+
+            dibujarNumero(g, numeroFormateado(f.numero), 0, y, ANCHO_NUM, f.alto);
+
+            if (opciones.disposicion === "apilado") {
+                let yy = y + PAD;
+                zonasUsadas.forEach(z => {
+                    const e = f.celdas[z.id];
+                    if (!e) return;
+                    g.drawImage(e, ANCHO_NUM + PAD, yy);
+                    yy += e.height + 10;
+                });
+            } else {
+                let x = ANCHO_NUM + PAD;
+                zonasUsadas.forEach(z => {
+                    const e = f.celdas[z.id];
+                    if (e) g.drawImage(e, x, y + (f.alto - e.height) / 2);
+                    x += z.ancho + HUECO;
+                });
+            }
+
+            g.fillStyle = "#cbd5e1";
+            g.fillRect(0, y + f.alto - 2, W, 2);
+            y += f.alto;
+        });
+
+        // Línea vertical tras la columna del número.
+        g.fillStyle = "#cbd5e1";
+        g.fillRect(ANCHO_NUM - 2, ALTO_CABECERA, 2, H - ALTO_CABECERA);
+
+        const tipo = opciones.formato === "png" ? "image/png" : "image/jpeg";
+        const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
+        const ext = opciones.formato === "png" ? "png" : "jpg";
+        const pad = n => String(n).padStart(3, "0");
+
+        return {
+            blob,
+            url: URL.createObjectURL(blob),
+            nombre: `collage_${String(indiceLote + 1).padStart(2, "0")}_recibos_${pad(desde + 1)}-${pad(hasta)}.${ext}`,
+            desde: desde + 1,
+            hasta,
+            ancho: W,
+            alto: H
+        };
     }
 
-    $("btnGeocodificar").addEventListener("click", async () => {
+    $("btnGenerar").addEventListener("click", async () => {
 
         if (leyendo) return;
 
-        const lista = recibos.filter(r => r.resultado && r.resultado.lat == null && r.resultado.direccion.texto);
-
-        if (!lista.length) {
-            setStatus($("statusLectura"), "✅ No hay recibos pendientes de coordenadas con dirección leída.", "success");
+        if (!recibos.length) {
+            setStatus($("statusCollages"), "⚠️ Primero toma o carga capturas.", "warning");
             return;
         }
 
-        leyendo = true;
-        cancelar = false;
-        $("btnCancelar").hidden = false;
-        let ok = 0;
-
-        for (let i = 0; i < lista.length && !cancelar; i++) {
-            setStatus($("statusLectura"), `🌎 Buscando dirección ${i + 1} de ${lista.length} (1 por segundo)…`);
-            $("barra").style.width = `${(i / lista.length) * 100}%`;
-            if (await geocodificar(lista[i])) ok++;
-            renderizarResultados();
+        if (!ZONAS.some(z => plantilla[z.id]) && !recibos.some(r => r.zonas)) {
+            setStatus($("statusCollages"), "⚠️ Marca las zonas en el paso 2.", "warning");
+            return;
         }
 
-        $("barra").style.width = "100%";
-        leyendo = false;
-        $("btnCancelar").hidden = true;
-
-        setStatus($("statusLectura"),
-            `🌎 Se ubicaron ${ok} de ${lista.length} direcciones (aproximadas). Las que no aparecen, ubícalas con 📍 Ubicar en mapa.`,
-            ok === lista.length ? "success" : "warning");
-    });
-
-    // ==========================================================
-    // UBICAR A MANO EN EL MAPA
-    // ==========================================================
-
-    let mapaModal = null, marcadorModal = null, indiceModal = null, puntoModal = null;
-
-    function abrirMapa(i) {
-
-        indiceModal = i;
-        const r = recibos[i];
-        const res = r.resultado;
-
-        $("modalTitulo").textContent = `Ubicar recibo ${i + 1}: ${res.nombre || ""} ${res.direccion.texto ? "· " + res.direccion.texto : ""}`;
-        $("modalMapa").hidden = false;
-
-        if (!mapaModal) {
-            mapaModal = L.map("mapaModal", { maxZoom: 22 });
-            const calles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                maxZoom: 22, maxNativeZoom: 19, attribution: "&copy; OpenStreetMap"
-            }).addTo(mapaModal);
-            const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-                maxZoom: 22, maxNativeZoom: 19, attribution: "Tiles &copy; Esri"
-            });
-            L.control.layers({ "🗺️ Calles": calles, "🛰️ Satélite": sat }, {}, { collapsed: false }).addTo(mapaModal);
-            mapaModal.on("click", ev => colocarPunto([ev.latlng.lat, ev.latlng.lng]));
-        }
-
-        // Centro: el punto actual, o el promedio de los ya ubicados, o el defecto.
-        const ubicados = recibos.map(x => x.resultado).filter(x => x && x.lat != null);
-        let centro = CENTRO_DEFECTO;
-        if (res.lat != null) centro = [res.lat, res.lon];
-        else if (ubicados.length) centro = [
-            ubicados.reduce((s, x) => s + x.lat, 0) / ubicados.length,
-            ubicados.reduce((s, x) => s + x.lon, 0) / ubicados.length
-        ];
-
-        setTimeout(() => {
-            mapaModal.invalidateSize();
-            mapaModal.setView(centro, res.lat != null ? 18 : 16);
-        }, 50);
-
-        puntoModal = res.lat != null ? [res.lat, res.lon] : null;
-        if (marcadorModal) { mapaModal.removeLayer(marcadorModal); marcadorModal = null; }
-        if (puntoModal) colocarPunto(puntoModal);
-        else $("modalCoords").textContent = "Toca el mapa…";
-    }
-
-    function colocarPunto(p) {
-        puntoModal = p;
-        if (!marcadorModal) marcadorModal = L.marker(p).addTo(mapaModal);
-        else marcadorModal.setLatLng(p);
-        $("modalCoords").textContent = `${p[0].toFixed(6)}, ${p[1].toFixed(6)}`;
-    }
-
-    $("modalUsar").addEventListener("click", () => {
-        if (!puntoModal || indiceModal === null) return;
-        const res = recibos[indiceModal].resultado;
-        res.lat = puntoModal[0];
-        res.lon = puntoModal[1];
-        res.fuente = "manual";
-        $("modalMapa").hidden = true;
-        renderizarResultados();
-    });
-
-    $("modalCerrar").addEventListener("click", () => { $("modalMapa").hidden = true; });
-
-    // ==========================================================
-    // CSV PARA GPS TRACK
-    // ==========================================================
-
-    function generarCSV() {
-
-        const incluirSin = $("incluirSinCoord").checked;
-        const q = v => {
-            const s = v == null ? "" : String(v);
-            return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        const opciones = {
+            porCollage: Math.max(1, parseInt($("optPorCollage").value, 10) || 15),
+            disposicion: $("optDisposicion").value,
+            contraste: $("optContraste").checked,
+            formato: $("optFormato").value
         };
 
-        const filas = [["Nombre", "gps", "lat", "lon", "direccion", "estado", "recibo"].join(",")];
-        let n = 0;
+        marcarCollagesDesactualizados();
+        leyendo = true;
+        $("btnGenerar").disabled = true;
 
-        recibos.forEach((r, i) => {
-            const res = r.resultado;
-            if (!res) return;
-            if (res.lat == null && !incluirSin) return;
+        const lotes = [];
+        for (let i = 0; i < recibos.length; i += opciones.porCollage) lotes.push(recibos.slice(i, i + opciones.porCollage));
 
-            const nombre = (res.cliente && res.cliente.nombre) || res.nombre || `Recibo ${i + 1}`;
-            filas.push([
-                q(nombre),
-                "",
-                res.lat != null ? res.lat.toFixed(7) : "",
-                res.lon != null ? res.lon.toFixed(7) : "",
-                q(res.direccion.texto),
-                q(estadoDe(res).texto.replace(/^[^\wÁÉÍÓÚáéíóú]+/, "")),
-                q(r.archivo)
-            ].join(","));
-            n++;
-        });
+        try {
+            for (let k = 0; k < lotes.length; k++) {
+                setStatus($("statusCollages"), `🧩 Armando collage ${k + 1} de ${lotes.length}…`);
+                $("barra").style.width = `${(k / lotes.length) * 100}%`;
+                collages.push(await construirCollage(lotes[k], k * opciones.porCollage, lotes.length, k, opciones));
+            }
+            $("barra").style.width = "100%";
+            setStatus($("statusCollages"),
+                `✅ ${collages.length} collage(s) listos con ${recibos.length} recibos (${opciones.porCollage} por imagen).`, "success");
+        } catch (err) {
+            setStatus($("statusCollages"), "❌ No se pudieron armar los collages: " + err.message, "error");
+        }
 
-        return { csv: filas.join("\n"), n };
-    }
+        leyendo = false;
+        $("btnGenerar").disabled = false;
+        renderizarCollages();
+    });
 
-    $("btnDescargar").addEventListener("click", () => {
+    function renderizarCollages() {
 
-        const { csv, n } = generarCSV();
-        if (!n) {
-            setStatus($("statusLectura"), "⚠️ No hay recibos leídos para exportar.", "warning");
+        if (!collages.length) {
+            $("listaCollages").innerHTML = "";
+            $("accionesCollages").hidden = true;
             return;
         }
 
-        const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+        $("accionesCollages").hidden = false;
+
+        $("listaCollages").innerHTML = collages.map((c, i) => `
+            <div class="collage">
+                <a href="${c.url}" target="_blank" rel="noopener"><img src="${c.url}" alt="Collage ${i + 1}"></a>
+                <div class="collage-pie">
+                    <span><b>Collage ${i + 1}</b> · recibos ${c.desde}–${c.hasta}<br><small>${c.ancho}×${c.alto} px · ${(c.blob.size / 1024 / 1024).toFixed(1)} MB</small></span>
+                    <button type="button" class="btn-mini" data-collage="${i}">⬇️ Descargar</button>
+                </div>
+            </div>
+        `).join("");
+
+        $("listaCollages").querySelectorAll("button[data-collage]").forEach(b => {
+            b.addEventListener("click", () => {
+                const c = collages[+b.getAttribute("data-collage")];
+                descargar(c.blob, c.nombre);
+            });
+        });
+    }
+
+    function descargar(blob, nombre) {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `recibos_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = nombre;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
 
-        setStatus($("statusLectura"), `⬇️ CSV descargado con ${n} recibo(s). Cárgalo en GPS Track con 📂 Cargar CSV.`, "success");
-    });
+    function indiceCSV() {
+        const q = s => /[",\n]/.test(s) ? '"' + String(s).replace(/"/g, '""') + '"' : s;
+        const porCollage = Math.max(1, parseInt($("optPorCollage").value, 10) || 15);
+        const filas = ["numero,collage,fila_en_collage,archivo"];
+        recibos.forEach((r, i) => {
+            filas.push([i + 1, Math.floor(i / porCollage) + 1, (i % porCollage) + 1, q(r.archivo)].join(","));
+        });
+        return filas.join("\n");
+    }
 
-    $("btnCopiar").addEventListener("click", async () => {
-        const { csv, n } = generarCSV();
-        if (!n) return;
-        try {
-            await navigator.clipboard.writeText(csv);
-            setStatus($("statusLectura"), `📋 CSV copiado (${n} recibos).`, "success");
-        } catch (err) {
-            setStatus($("statusLectura"), "❌ No se pudo copiar. Usa ⬇️ Descargar CSV.", "error");
+    $("btnZip").addEventListener("click", async () => {
+
+        if (!collages.length) return;
+        if (!window.JSZip) {
+            setStatus($("statusCollages"), "❌ No cargó la librería ZIP (revisa tu conexión). Descarga los collages uno por uno.", "error");
+            return;
         }
+
+        setStatus($("statusCollages"), "📦 Armando el ZIP…");
+        const zip = new JSZip();
+        collages.forEach(c => zip.file(c.nombre, c.blob));
+        zip.file("indice_recibos.csv", "﻿" + indiceCSV());
+        const blob = await zip.generateAsync({ type: "blob" });
+        descargar(blob, `collages_recibos_${new Date().toISOString().slice(0, 10)}.zip`);
+        setStatus($("statusCollages"), `📦 ZIP descargado con ${collages.length} collage(s) y el índice de recibos.`, "success");
     });
 
-    // Aviso antes de cerrar si hay trabajo sin descargar.
-    window.addEventListener("beforeunload", e => {
-        if (recibos.some(r => r.resultado)) {
-            e.preventDefault();
-            e.returnValue = "";
+    $("btnPdf").addEventListener("click", async () => {
+
+        if (!collages.length) return;
+        if (!window.jspdf) {
+            setStatus($("statusCollages"), "❌ No cargó la librería PDF (revisa tu conexión). Usa el ZIP.", "error");
+            return;
         }
+
+        setStatus($("statusCollages"), "📄 Armando el PDF…");
+
+        const aDataURL = blob => new Promise(res => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.readAsDataURL(blob);
+        });
+
+        // Una página por collage, del tamaño exacto de la imagen.
+        const pt = px => px * 0.75;
+        let pdf = null;
+
+        for (const c of collages) {
+            const formato = [pt(c.ancho), pt(c.alto)];
+            const orient = c.ancho > c.alto ? "landscape" : "portrait";
+            if (!pdf) pdf = new jspdf.jsPDF({ orientation: orient, unit: "pt", format: formato });
+            else pdf.addPage(formato, orient);
+            pdf.addImage(await aDataURL(c.blob), c.nombre.endsWith(".png") ? "PNG" : "JPEG", 0, 0, formato[0], formato[1]);
+        }
+
+        pdf.save(`collages_recibos_${new Date().toISOString().slice(0, 10)}.pdf`);
+        setStatus($("statusCollages"), `📄 PDF descargado con ${collages.length} página(s).`, "success");
     });
 
+    $("btnIndice").addEventListener("click", () => {
+        descargar(new Blob(["﻿" + indiceCSV()], { type: "text/csv;charset=utf-8" }), "indice_recibos.csv");
+    });
+
+
+    // Cuando cambian las zonas: se rehacen las miniaturas y los collages quedan viejos.
+    function zonasCambiaron(recibo) {
+        if (recibo) recibo.tira = null;
+        else recibos.forEach(r => { if (!r.zonas) r.tira = null; });
+        marcarCollagesDesactualizados();
+        clearTimeout(zonasCambiaron.t);
+        zonasCambiaron.t = setTimeout(renderizarCapturas, 300);
+    }
     // ==========================================================
     // MODO CÁMARA CON SEGMENTACIÓN (recuadro + zonas encima de la imagen)
     // ==========================================================
@@ -2133,7 +1913,7 @@
         actualizarContador();
         mostrarAvisoCamara(ZONAS.some(z => plantilla[z.id])
             ? "Alinea el recibo dentro del recuadro, con el texto dentro de cada zona."
-            : "Aún no tienes zonas marcadas: toma un recibo, márcale las zonas en el paso 3 y vuelve a la cámara.", 4000);
+            : "Aún no tienes zonas marcadas: toma un recibo, márcale las zonas en el paso 2 y vuelve a la cámara.", 4000);
 
         // Esperar a que el video tenga tamaño antes de dibujar.
         const listo = () => { calcularMarco(); dibujarSegmentacion(); };
@@ -2464,40 +2244,22 @@
         const numero = recibos.length + 1;
         await agregarRecibo(c, `Cámara · recibo ${numero}`);
         const recibo = recibos[recibos.length - 1];
-
+        marcarCollagesDesactualizados();
         actualizarContador();
 
-        // Sin zonas no se puede leer todavía: queda cargado para marcarle zonas.
         if (!ZONAS.some(z => plantilla[z.id])) {
-            mostrarAvisoCamara(`📄 Recibo ${numero} guardado. Cierra la cámara y márcale las zonas en el paso 3.`);
+            mostrarAvisoCamara(`📄 Recibo ${numero} guardado. Cierra la cámara y márcale las zonas en el paso 2.`);
             return;
         }
 
-        cam.enCola++;
-        actualizarContador();
-
-        cam.cola = cam.cola.then(async () => {
-            try {
-                recibo.resultado = await leerRecibo(recibo);
-                cruzarConMaestro(recibo);
-                const res = recibo.resultado;
-                const e = estadoDe(res);
-                mostrarAvisoCamara(
-                    `<b>#${numero}</b> ${escapeHTML((res.cliente && res.cliente.nombre) || res.nombre || "—")}<br>` +
-                    `${escapeHTML(res.direccion.texto || "Dirección no leída")}<br><small>${e.texto}</small>`, 3500);
-            } catch (err) {
-                recibo.resultado = null;
-                mostrarAvisoCamara(`❌ Recibo ${numero}: ${escapeHTML(err.message)}`, 5000);
-            }
-            cam.enCola--;
-            actualizarContador();
-            renderizarResultados();
-        });
+        // Muestra el recorte que quedó, para confirmar que el texto cayó dentro de las zonas.
+        recibo.tira = await tiraMiniatura(recibo, 60);
+        mostrarAvisoCamara(`<b>#${numeroFormateado(numero)}</b> guardado<br><img class="tira" src="${recibo.tira}" alt="Recorte">`, 2500);
     }
 
     function actualizarContador() {
         $("camContador").innerHTML =
-            `📄 ${cam.capturados} capturado(s)` + (cam.enCola ? ` · 🔎 ${cam.enCola} leyendo…` : "");
+            `📄 ${cam.capturados} en esta sesión · ${recibos.length} en total`;
     }
 
     let temporizadorAviso = null;
@@ -2574,9 +2336,10 @@
     });
 
 
+
     // Inicio
     mostrarRecibo();
-    renderizarResultados();
+    renderizarCapturas();
 
 </script>
 
