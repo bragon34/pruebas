@@ -1,0 +1,3584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Recortes de Recibos</title>
+
+
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f4f6f8;
+        min-height: 100vh;
+        color: #1f2937;
+    }
+
+    .app {
+        width: 100%;
+        max-width: 1400px;
+        margin: auto;
+        padding: 16px;
+        display: grid;
+        gap: 14px;
+    }
+
+    /* Evita que una tabla ancha estire toda la página en el celular. */
+    .app > *,
+    .zonas-layout > * {
+        min-width: 0;
+    }
+
+    .card {
+        background: white;
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+
+    h2 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    h2 .paso {
+        display: inline-grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #4f46e5;
+        color: white;
+        font-size: 13px;
+        flex: 0 0 auto;
+    }
+
+    .sub {
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.45;
+        max-width: 90ch;
+    }
+
+    .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #4f46e5;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.15s;
+    }
+
+    .btn:hover {
+        background: #4338ca;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+    .btn.secondary {
+        background: #f1f5f9;
+        color: #334155;
+    }
+
+    .btn.secondary:hover {
+        background: #e2e8f0;
+    }
+
+    .btn.green {
+        background: #059669;
+    }
+
+    .btn.green:hover {
+        background: #047857;
+    }
+
+    .btn.danger {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    label.campo {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #475569;
+    }
+
+    label.campo input[type="text"] {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        min-width: 220px;
+    }
+
+    .status {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 14px;
+    }
+
+    .status.success {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .status.error {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    .status.warning {
+        background: #fffbeb;
+        color: #92400e;
+    }
+
+    .nota {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 8px;
+        line-height: 1.45;
+    }
+
+    /* ---------- Zonas ---------- */
+
+    .zonas-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 14px;
+        align-items: start;
+    }
+
+    .formato-barra {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #eef2ff;
+    }
+
+    .formato-barra select,
+    .nav-recibo select {
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid #c7d2fe;
+        font-size: 13px;
+        background: white;
+        max-width: 220px;
+    }
+
+    .editor-barra {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .grupo-herr {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 4px;
+    }
+
+    .herr {
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        background: transparent;
+        color: #334155;
+        cursor: pointer;
+        min-width: 40px;
+    }
+
+    .herr:hover {
+        background: #e2e8f0;
+    }
+
+    .herr.on {
+        background: #4f46e5;
+        color: white;
+    }
+
+    .zoom-texto {
+        min-width: 52px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: bold;
+        color: #475569;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pad {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        color: #475569;
+    }
+
+    .pad-titulo {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        font-weight: bold;
+    }
+
+    .pad-titulo select {
+        padding: 3px 4px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        font-size: 12px;
+    }
+
+    .pad-grupo {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .pad-grupo span {
+        min-width: 40px;
+    }
+
+    .pad-grupo button {
+        border: none;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+        width: 38px;
+        height: 34px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .pad-grupo button:active {
+        background: #e0e7ff;
+    }
+
+    .lienzo-wrap {
+        background: #0f172a;
+        border-radius: 12px;
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        min-height: 240px;
+    }
+
+    #lienzoZonas {
+        display: block;
+        width: 100%;
+        height: min(70vh, 640px);
+        outline: none;
+        touch-action: none;
+        cursor: crosshair;
+    }
+
+    .zona-botones {
+        display: grid;
+        gap: 8px;
+    }
+
+    .zona-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background: #f8fafc;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: left;
+        color: #1f2937;
+    }
+
+    .zona-btn .muestra {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        background: var(--c);
+        flex: 0 0 auto;
+    }
+
+    .zona-btn small {
+        display: block;
+        font-weight: normal;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .zona-btn.activa {
+        border-color: var(--c);
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .zona-btn .estado-zona {
+        margin-left: auto;
+        font-size: 12px;
+    }
+
+    .nav-recibo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: #475569;
+    }
+
+    /* ---------- Progreso ---------- */
+
+    .progreso {
+        height: 10px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+        margin-top: 12px;
+    }
+
+    .progreso div {
+        height: 100%;
+        width: 0;
+        background: #4f46e5;
+        transition: width 0.2s;
+    }
+
+    /* ---------- Resultados ---------- */
+
+    .resumen {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: bold;
+        background: #f1f5f9;
+        color: #334155;
+        white-space: nowrap;
+    }
+
+    .chip.ok { background: #ecfdf5; color: #047857; }
+    .chip.revisar { background: #fffbeb; color: #92400e; }
+    .chip.aprox { background: #eff6ff; color: #1d4ed8; }
+    .chip.manual { background: #f5f3ff; color: #6d28d9; }
+    .chip.sin { background: #fef2f2; color: #b91c1c; }
+
+    .tabla-wrap {
+        overflow-x: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+    }
+
+    th, td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    td.num {
+        font-weight: bold;
+        color: #64748b;
+    }
+
+    .recorte {
+        display: block;
+        max-width: 230px;
+        max-height: 60px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        background: white;
+    }
+
+    td input[type="text"] {
+        width: 100%;
+        min-width: 200px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+    }
+
+    td select {
+        width: 100%;
+        min-width: 200px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        background: white;
+    }
+
+    .texto-crudo {
+        color: #94a3b8;
+        font-size: 11px;
+        margin-top: 3px;
+        max-width: 260px;
+        overflow-wrap: anywhere;
+    }
+
+    .coords {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .acciones-fila {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .btn-mini {
+        border: none;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        background: #f1f5f9;
+        color: #334155;
+        white-space: nowrap;
+    }
+
+    .btn-mini:hover {
+        background: #e2e8f0;
+    }
+
+    .empty-hint {
+        color: #94a3b8;
+        font-size: 13px;
+        text-align: center;
+        padding: 30px 10px;
+    }
+
+    /* ---------- Cámara con segmentación ---------- */
+
+    .camara {
+        position: fixed;
+        inset: 0;
+        z-index: 4000;
+        background: black;
+    }
+
+    .camara[hidden] {
+        display: none;
+    }
+
+    .cam-vista {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+    }
+
+    #camVideo,
+    #camOverlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    #camVideo {
+        object-fit: cover;
+        z-index: 0;
+    }
+
+    #camOverlay {
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .cam-flash {
+        position: absolute;
+        inset: 0;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .cam-flash.on {
+        animation: destello 0.35s ease-out;
+    }
+
+    @keyframes destello {
+        from { opacity: 0.8; }
+        to { opacity: 0; }
+    }
+
+    .cam-btn.cam-cerrar {
+        background: rgba(220, 38, 38, 0.9);
+    }
+
+    /* Barra superior: una sola fila de botones grandes. */
+    .cam-barra-sup .cam-btn {
+        flex: 0 1 auto;
+        min-width: 0;
+        padding: 12px 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #camFormato {
+        flex: 1 1 auto;
+        max-width: 190px;
+    }
+
+    .cam-mas {
+        position: absolute;
+        z-index: 3;
+        right: 10px;
+        top: calc(78px + env(safe-area-inset-top, 0px));
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.9);
+    }
+
+    .cam-mas[hidden] {
+        display: none;
+    }
+
+    .cam-reemplazo {
+        position: absolute;
+        z-index: 3;
+        left: 50%;
+        top: calc(80px + env(safe-area-inset-top, 0px));
+        transform: translateX(-50%);
+        width: min(92%, 460px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: #f59e0b;
+        color: #111827;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .cam-reemplazo[hidden] {
+        display: none;
+    }
+
+    .cam-reemplazo button {
+        border: none;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: bold;
+        font-size: 15px;
+        background: rgba(0, 0, 0, 0.2);
+        color: #111827;
+        cursor: pointer;
+    }
+
+    .cam-lado {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .cam-lado.derecha {
+        justify-content: flex-end;
+    }
+
+    .cam-centro {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+    }
+
+    .cam-redondo {
+        width: 64px;
+        height: 64px;
+        min-height: 64px;
+        padding: 0;
+        font-size: 28px;
+        display: grid;
+        place-items: center;
+    }
+
+    .cam-redondo[hidden] {
+        display: none;
+    }
+
+    .cam-barra-sup {
+        position: absolute;
+        z-index: 3;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 10px;
+        background: linear-gradient(rgba(0, 0, 0, 0.6), transparent);
+    }
+
+    .cam-btn {
+        border: none;
+        border-radius: 999px;
+        min-height: 52px;
+        padding: 12px 18px;
+        font-size: 17px;
+        font-weight: bold;
+        background: rgba(255, 255, 255, 0.18);
+        color: white;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+    }
+
+    .cam-btn.on {
+        background: #4f46e5;
+    }
+
+    .cam-btn[hidden] {
+        display: none;
+    }
+
+    .cam-aviso {
+        position: absolute;
+        z-index: 3;
+        left: 50%;
+        bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+        width: min(92%, 460px);
+        background: rgba(15, 23, 42, 0.88);
+        color: white;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 14px;
+        line-height: 1.4;
+        text-align: center;
+    }
+
+    .cam-aviso small {
+        color: #cbd5e1;
+    }
+
+    .cam-aviso-btn {
+        display: inline-block;
+        margin-top: 8px;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-weight: bold;
+        background: white;
+        color: #0f172a;
+        cursor: pointer;
+    }
+
+    .cam-barra-inf {
+        position: absolute;
+        z-index: 3;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 14px calc(22px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+        color: white;
+        font-size: 13px;
+    }
+
+    .cam-contador {
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .cam-ayuda {
+        text-align: right;
+        color: #cbd5e1;
+    }
+
+    .cam-disparo {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        border: 6px solid white;
+        background: rgba(255, 255, 255, 0.35);
+        cursor: pointer;
+    }
+
+    .cam-disparo:active {
+        background: white;
+        transform: scale(0.94);
+    }
+
+    /* ---------- Modal mapa ---------- */
+
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        z-index: 3000;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+    }
+
+    .modal[hidden] {
+        display: none;
+    }
+
+    .modal-caja {
+        background: white;
+        border-radius: 16px;
+        width: min(820px, 100%);
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+    }
+
+    #mapaModal {
+        width: 100%;
+        height: min(60vh, 480px);
+        border-radius: 12px;
+    }
+
+    @media (max-width: 900px) {
+        .zonas-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .app {
+            padding: 10px;
+        }
+
+        .card {
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 19px;
+        }
+
+        label.campo input[type="text"] {
+            min-width: 0;
+            width: 100%;
+        }
+    }
+
+    /* ---------- Capturas y collages ---------- */
+
+    .tira {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: white;
+        margin-top: 6px;
+    }
+
+    .contador-capturas {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: normal;
+    }
+
+    .lista-capturas {
+        display: grid;
+        gap: 8px;
+        max-height: 520px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .captura {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+    }
+
+    .captura-num {
+        flex: 0 0 auto;
+        min-width: 44px;
+        height: 44px;
+        padding: 0 6px;
+        border-radius: 10px;
+        background: #111827;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        display: grid;
+        place-items: center;
+    }
+
+    .captura-cuerpo {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .captura-cuerpo .tira {
+        margin-top: 0;
+        max-height: 56px;
+        width: auto;
+    }
+
+    .captura-cuerpo small {
+        display: block;
+        color: #94a3b8;
+        font-size: 11px;
+        margin-top: 3px;
+    }
+
+    .captura-acciones {
+        display: flex;
+        gap: 4px;
+        flex: 0 0 auto;
+    }
+
+    .opciones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .opciones select {
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+        background: white;
+    }
+
+    #accionesCollages {
+        display: contents;
+    }
+
+    #accionesCollages[hidden] {
+        display: none;
+    }
+
+    .lista-collages {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .collage {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f8fafc;
+    }
+
+    .collage img {
+        display: block;
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        object-position: top left;
+        background: white;
+    }
+
+    .collage-pie {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .collage-pie small {
+        color: #64748b;
+    }
+
+    .cam-aviso .tira {
+        margin: 6px auto 0;
+        max-height: 60px;
+        width: auto;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <div class="card">
+        <h1>✂️ Recortes de Recibos → Collages</h1>
+        <p class="sub">
+            Captura los recibos con el recuadro guía. La página recorta <strong>exactamente</strong> las zonas que marcaste
+            (código, nombre, dirección, teléfono) y las une en collages numerados de 15 recibos por imagen, con todos los recortes del
+            mismo tamaño. Luego pasas los collages por la aplicación de OCR que prefieras (Google Lens, Google Drive,
+            Microsoft Lens…) y el número de cada fila te dice a qué recibo corresponde.
+        </p>
+        <p class="nota">Todo se procesa en tu celular o computador: las imágenes no se suben a ningún servidor.</p>
+    </div>
+
+    <!-- PASO 1 -->
+    <div class="card">
+        <h2><span class="paso">1</span> Capturar los recibos</h2>
+        <div class="toolbar">
+            <button class="btn green" id="btnCamara">📷 Modo cámara (con recuadro)</button>
+            <button class="btn secondary" id="btnFotoNativa">📸 Foto con la cámara del celular</button>
+            <input type="file" id="inputFotoNativa" accept="image/*" capture="environment">
+            <button class="btn secondary" id="btnRecibos">🖼️ Cargar fotos / PDF</button>
+            <input type="file" id="inputRecibos" accept="image/*,application/pdf" multiple>
+            <button class="btn secondary" id="btnLimpiarRecibos">🗑️ Quitar todo</button>
+            <input type="file" id="inputReemplazo" accept="image/*">
+        </div>
+        <div id="statusRecibos" class="status">Aún no hay capturas. El modo cámara necesita que la página esté en una dirección https://.</div>
+        <p class="nota">
+            Primera vez: toma o carga un recibo, marca sus zonas en el paso 2 y luego vuelve al modo cámara:
+            verás esas zonas encima de la imagen para alinear todos los recibos igual.
+        </p>
+    </div>
+
+    <!-- PASO 2 -->
+    <div class="card">
+        <h2><span class="paso">2</span> Marca las zonas a recortar</h2>
+        <p class="sub" style="margin-bottom:12px">
+            Elige una zona a la derecha y arrastra un rectángulo sobre el recibo. El recorte es estricto: solo sale lo que
+            queda dentro. Las zonas se guardan en este dispositivo y se usan para todas las capturas.
+        </p>
+        <div class="zonas-layout">
+            <div>
+                <div class="formato-barra">
+                    <label class="campo">📋 Formato activo
+                        <select id="selFormato" title="Formato que usan las nuevas capturas y la cámara"></select>
+                    </label>
+                    <button type="button" class="btn-mini" id="btnNuevoFormato">➕ Nuevo formato</button>
+                    <button type="button" class="btn-mini" id="btnRenombrarFormato">🏷️ Renombrar</button>
+                    <button type="button" class="btn-mini" id="btnBorrarFormato">🗑️ Borrar formato</button>
+                </div>
+                <div class="editor-barra">
+                    <div class="grupo-herr">
+                        <button type="button" class="herr" data-modo="dibujar" title="Arrastra para dibujar la zona seleccionada">✏️ Dibujar</button>
+                        <button type="button" class="herr" data-modo="ajustar" title="Arrastra una zona para moverla, o sus manijas para cambiar el tamaño">✥ Ajustar</button>
+                        <button type="button" class="herr" data-modo="mover" title="Arrastra para mover la imagen">✋ Mover</button>
+                    </div>
+                    <div class="grupo-herr">
+                        <button type="button" class="herr" id="btnZoomMenos" title="Alejar">−</button>
+                        <span class="zoom-texto" id="zoomTexto">—</span>
+                        <button type="button" class="herr" id="btnZoomMas" title="Acercar">+</button>
+                        <button type="button" class="herr" id="btnZoomAjustar" title="Ver el recibo completo">⤢ Ver todo</button>
+                    </div>
+                </div>
+                <div class="lienzo-wrap">
+                    <canvas id="lienzoZonas" tabindex="0" aria-label="Recibo para marcar zonas"></canvas>
+                </div>
+                <p class="nota" style="margin-top:6px">
+                    Zoom: pellizca con dos dedos (o rueda del mouse). Con dos dedos también mueves la imagen.
+                    En <b>✥ Ajustar</b>, arrastra la zona para moverla o sus cuadritos para cambiar el tamaño.
+                </p>
+                <div class="nav-recibo" style="margin-top:8px">
+                    <button class="btn-mini" id="btnAnterior">◀ Anterior</button>
+                    <span id="textoRecibo">—</span>
+                    <button class="btn-mini" id="btnSiguiente">Siguiente ▶</button>
+                    <button class="btn-mini" id="btnGirarUno" title="Girar este recibo 90° a la derecha">↻ Girar este</button>
+                    <button class="btn-mini" id="btnGirarTodos" title="Girar todos los recibos 90° a la derecha">↻ Girar todos</button>
+                    <button class="btn-mini" id="btnRehacerEste" title="Tomar de nuevo la foto de este recibo">📷 Rehacer este</button>
+                    <label class="campo">Este recibo es del formato
+                        <select id="selFormatoRecibo"></select>
+                    </label>
+                </div>
+                <div id="pruebaLectura" class="nota"></div>
+            </div>
+            <div class="zona-botones" id="zonaBotones"></div>
+        </div>
+    </div>
+
+    <!-- PASO 3 -->
+    <div class="card">
+        <h2><span class="paso">3</span> Capturas <span class="contador-capturas">(<span id="totalCapturas">0</span>)</span></h2>
+        <p class="sub" style="margin-bottom:10px">
+            Revisa que cada recorte muestre bien el texto. Si uno quedó corrido, usa <b>✂️ Zonas</b> para ajustarle las zonas
+            solo a ese recibo, o quítalo y vuelve a capturarlo.
+        </p>
+        <div class="lista-capturas" id="listaCapturas"></div>
+    </div>
+
+    <!-- PASO 4 -->
+    <div class="card">
+        <h2><span class="paso">4</span> Collages para tu app de OCR</h2>
+        <div class="opciones">
+            <label class="campo">Recibos por collage
+                <select id="optPorCollage">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="20">20</option>
+                    <option value="25">25</option>
+                </select>
+            </label>
+            <label class="campo">Disposición
+                <select id="optDisposicion">
+                    <option value="fila" selected>Una fila por recibo: campos lado a lado (datos de 1 renglón)</option>
+                    <option value="apilado">Ficha por recibo: campos uno debajo de otro (datos de varias líneas)</option>
+                </select>
+            </label>
+            <label class="campo">Margen del recorte
+                <select id="optMargen">
+                    <option value="0" selected>0 % (estricto)</option>
+                    <option value="0.5">0,5 %</option>
+                    <option value="1">1 %</option>
+                    <option value="2">2 %</option>
+                </select>
+            </label>
+            <label class="campo">Formato
+                <select id="optFormato">
+                    <option value="jpeg" selected>JPG (liviano)</option>
+                    <option value="png">PNG (máxima calidad)</option>
+                </select>
+            </label>
+            <label class="campo"><input type="checkbox" id="optContraste" checked> Blanco y negro con contraste (mejor para OCR)</label>
+            <label class="campo" title="En la ficha, escribe CÓDIGO:, NOMBRE:, DIRECCIÓN:, TELÉFONO: antes de cada campo. Así el texto del OCR sale ya etiquetado."><input type="checkbox" id="optRotulos" checked> Rótulos de campo en la ficha</label>
+            <label class="campo"><input type="checkbox" id="optSeparar" checked> Separar collages por formato</label>
+        </div>
+        <div class="toolbar">
+            <button class="btn green" id="btnGenerar">🧩 Generar collages</button>
+            <span id="accionesCollages" hidden>
+                <button class="btn" id="btnZip">📦 Descargar todo (ZIP)</button>
+                <button class="btn secondary" id="btnPdf">📄 Descargar PDF</button>
+                <button class="btn secondary" id="btnIndice">🧾 Índice de recibos (CSV)</button>
+            </span>
+        </div>
+        <p class="nota">
+            Orden de los campos: <b>código, nombre, dirección, teléfono</b>. El campo que no tenga recuadro en el formato no sale.
+            Para recibos con datos de varias líneas usa <b>Ficha por recibo</b>: cada campo queda en su propio bloque y el OCR no mezcla renglones de distintos campos.
+        </p>
+        <div class="progreso"><div id="barra"></div></div>
+        <div id="statusCollages" class="status">Cuando tengas las capturas, genera los collages.</div>
+        <div class="lista-collages" id="listaCollages"></div>
+    </div>
+
+</div>
+
+<!-- Cámara con segmentación -->
+<div class="camara" id="camara" hidden>
+    <div class="cam-vista" id="camVista">
+        <video id="camVideo" playsinline autoplay muted></video>
+        <canvas id="camOverlay"></canvas>
+        <div class="cam-flash" id="camFlash"></div>
+
+        <div class="cam-barra-sup">
+            <button type="button" class="cam-btn cam-cerrar" id="camCerrar">✖ Cerrar</button>
+            <button type="button" class="cam-btn" id="camFormato">📋 Formato</button>
+            <button type="button" class="cam-btn" id="camGiro">🔄 0°</button>
+            <button type="button" class="cam-btn" id="camMasBtn" aria-label="Más opciones">⚙️</button>
+        </div>
+
+        <div class="cam-mas" id="camMas" hidden>
+            <button type="button" class="cam-btn" id="camForma">▭ Como mi plantilla</button>
+            <button type="button" class="cam-btn" id="camCuadricula">▦ Cuadrícula</button>
+            <button type="button" class="cam-btn" id="camNitidez">🔍 Nitidez</button>
+        </div>
+
+        <div class="cam-reemplazo" id="camReemplazo" hidden></div>
+
+        <div class="cam-aviso" id="camAviso" hidden></div>
+
+        <div class="cam-barra-inf">
+            <div class="cam-lado">
+                <button type="button" class="cam-btn cam-redondo" id="camLinterna" hidden aria-label="Linterna">🔦</button>
+            </div>
+            <div class="cam-centro">
+                <button type="button" class="cam-disparo" id="camCapturar" aria-label="Capturar recibo"></button>
+                <div class="cam-contador" id="camContador"></div>
+            </div>
+            <div class="cam-lado derecha">
+                <button type="button" class="cam-btn cam-redondo" id="camAuto" aria-label="Captura automática">🤖</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+
+    // ==========================================================
+    // CONFIGURACIÓN
+    // ==========================================================
+
+    // Orden fijo de los campos en la exportación: código, nombre, dirección, teléfono.
+    // El campo que no tenga recuadro en un formato simplemente no sale.
+    const ZONAS = [
+        { id: "codigo",    nombre: "🔢 Código",    rotulo: "CÓDIGO",    color: "#059669", ancho: 520 },
+        { id: "nombre",    nombre: "👤 Nombre",    rotulo: "NOMBRE",    color: "#2563eb", ancho: 900 },
+        { id: "direccion", nombre: "🏠 Dirección", rotulo: "DIRECCIÓN", color: "#dc2626", ancho: 1100 },
+        { id: "telefono",  nombre: "📞 Teléfono",  rotulo: "TELÉFONO",  color: "#9333ea", ancho: 600 }
+    ];
+
+    // Se comparte con la página OCR: si ya marcaste zonas allá, aparecen aquí.
+    const CLAVE_PLANTILLA = "ocrRecibos.plantilla";
+    const CLAVE_OPCIONES = "recortes.opciones";
+    const CLAVE_FORMATOS = "recortes.formatos";
+
+    // Lado máximo al guardar cada recibo (px). Alto para que los recortes salgan nítidos.
+    const LADO_MAXIMO = 3000;
+
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+
+    // ==========================================================
+    // ESTADO
+    // ==========================================================
+
+    let recibos = [];          // { id, archivo, blob, ancho, alto, zonas?, tira? }
+    let plantilla = {};        // zonas del formato activo: { codigo: {x,y,w,h}, nombre: {...}, ... } en fracciones 0..1
+    let formatos = [];         // { id, nombre, zonas, aspecto }: cada tipo de recibo tiene sus propios recuadros
+    let formatoActivoId = null;
+    let zonaActiva = "codigo";
+    let indiceVista = 0;
+    let leyendo = false;       // true mientras se generan collages
+    let collages = [];         // { blob, url, nombre, desde, hasta, ancho, alto }
+
+    const $ = id => document.getElementById(id);
+
+    function escapeHTML(t) {
+        const d = document.createElement("div");
+        d.textContent = t == null ? "" : String(t);
+        return d.innerHTML;
+    }
+
+    function setStatus(el, texto, tipo) {
+        el.textContent = texto;
+        el.className = "status" + (tipo ? " " + tipo : "");
+    }
+
+    // ---------- Formatos (tipos de recibo) ----------
+
+    function formatoActivo() {
+        return formatos.find(f => f.id === formatoActivoId) || formatos[0];
+    }
+
+    function formatoDe(recibo) {
+        return (recibo && formatos.find(f => f.id === recibo.formato)) || formatoActivo();
+    }
+
+    function guardarFormatos() {
+        try { localStorage.setItem(CLAVE_FORMATOS, JSON.stringify({ formatos, activo: formatoActivoId })); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    function hayAlgunaZona() {
+        return formatos.some(f => ZONAS.some(z => f.zonas[z.id])) || recibos.some(r => r.zonas);
+    }
+
+    (function cargarFormatos() {
+        try {
+            const d = JSON.parse(localStorage.getItem(CLAVE_FORMATOS) || "null");
+            if (d && Array.isArray(d.formatos) && d.formatos.length) {
+                formatos = d.formatos.map(f => ({ ...f, zonas: f.zonas || {} }));
+                formatoActivoId = d.activo;
+            }
+        } catch (e) { /* datos dañados */ }
+
+        // Primera vez: se crea "Formato 1" con las zonas que ya tenías marcadas.
+        if (!formatos.length) {
+            let zonas = {}, aspecto = null;
+            try { zonas = JSON.parse(localStorage.getItem(CLAVE_PLANTILLA) || "{}") || {}; } catch (e) { zonas = {}; }
+            try { aspecto = parseFloat(localStorage.getItem("ocrRecibos.aspecto")) || null; } catch (e) { aspecto = null; }
+            formatos = [{ id: 1, nombre: "Formato 1", zonas, aspecto }];
+            formatoActivoId = 1;
+        }
+
+        if (!formatos.some(f => f.id === formatoActivoId)) formatoActivoId = formatos[0].id;
+        plantilla = formatoActivo().zonas;
+    })();
+
+    // Opciones del collage recordadas en el dispositivo.
+    const OPCIONES = ["optPorCollage", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optSeparar"];
+
+    try {
+        const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
+        OPCIONES.forEach(id => {
+            if (o[id] === undefined) return;
+            if ($(id).type === "checkbox") $(id).checked = !!o[id];
+            else $(id).value = o[id];
+        });
+    } catch (e) { /* sin almacenamiento */ }
+
+    OPCIONES.forEach(id => $(id).addEventListener("change", () => {
+        const o = {};
+        OPCIONES.forEach(k => { o[k] = $(k).type === "checkbox" ? $(k).checked : $(k).value; });
+        try { localStorage.setItem(CLAVE_OPCIONES, JSON.stringify(o)); } catch (e) { /* sin almacenamiento */ }
+        if (id === "optMargen") { recibos.forEach(r => { r.tira = null; }); renderizarCapturas(); programarVistaPrevia(); }
+        marcarCollagesDesactualizados();
+    }));
+
+    // Nombre que usa el código heredado de la cámara y la carga de fotos.
+    function renderizarResultados() {
+        renderizarCapturas();
+    }
+
+
+    // ==========================================================
+    // GUARDADO EN EL DISPOSITIVO (las capturas sobreviven a una recarga)
+    // ==========================================================
+    //
+    // Cada captura se guarda en la base de datos interna del navegador
+    // (IndexedDB) apenas se toma. Si recargas o cierras la página por error,
+    // al abrirla otra vez las capturas vuelven solas. Solo se borran con
+    // "🗑️ Quitar todo" o con la papelera de cada captura.
+
+    const BD_NOMBRE = "recortesRecibos";
+    const BD_TABLA = "recibos";
+    let bdPromesa = null;
+
+    function abrirBD() {
+        if (bdPromesa) return bdPromesa;
+        bdPromesa = new Promise((res, rej) => {
+            if (!window.indexedDB) { rej(new Error("este navegador no permite guardar datos")); return; }
+            const req = indexedDB.open(BD_NOMBRE, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(BD_TABLA)) {
+                    req.result.createObjectStore(BD_TABLA, { keyPath: "id" });
+                }
+            };
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+        });
+        return bdPromesa;
+    }
+
+    async function operarBD(modo, fn) {
+        const db = await abrirBD();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(BD_TABLA, modo);
+            const tabla = tx.objectStore(BD_TABLA);
+            const req = fn(tabla);
+            tx.oncomplete = () => res(req ? req.result : undefined);
+            tx.onerror = () => rej(tx.error);
+            tx.onabort = () => rej(tx.error);
+        });
+    }
+
+    let avisoGuardadoMostrado = false;
+
+    async function guardarReciboBD(r) {
+        try {
+            await operarBD("readwrite", t => t.put({
+                id: r.id,
+                archivo: r.archivo,
+                blob: r.blob,
+                ancho: r.ancho,
+                alto: r.alto,
+                zonas: r.zonas || null,
+                formato: r.formato
+            }));
+        } catch (err) {
+            if (!avisoGuardadoMostrado) {
+                avisoGuardadoMostrado = true;
+                setStatus($("statusRecibos"),
+                    "⚠️ No se pudo guardar en el dispositivo (" + (err && err.name === "QuotaExceededError" ? "sin espacio" : (err && err.message) || "error") +
+                    "). Las capturas se perderían al recargar: genera y descarga los collages pronto.", "warning");
+            }
+        }
+    }
+
+    async function borrarReciboBD(id) {
+        try { await operarBD("readwrite", t => t.delete(id)); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    async function limpiarBD() {
+        try { await operarBD("readwrite", t => t.clear()); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    async function recuperarRecibosBD() {
+
+        let guardados = [];
+        try {
+            guardados = await operarBD("readonly", t => t.getAll());
+        } catch (e) {
+            return;
+        }
+
+        if (!guardados || !guardados.length) return;
+
+        recibos = guardados
+            .filter(g => g.blob)
+            .sort((a, b) => a.id - b.id)
+            .map(g => ({
+                ...g,
+                zonas: g.zonas || null,
+                formato: formatos.some(f => f.id === g.formato) ? g.formato : formatos[0].id,
+                resultado: null,
+                tira: null
+            }));
+
+        indiceVista = 0;
+
+        let espacio = "";
+        try {
+            const est = await navigator.storage.estimate();
+            const mb = est.usage / 1024 / 1024;
+            espacio = ` (${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB usados en el dispositivo)`;
+        } catch (e) { /* no disponible */ }
+
+        setStatus($("statusRecibos"),
+            `♻️ Se recuperaron ${recibos.length} captura(s) guardadas${espacio}. Para empezar de cero usa 🗑️ Quitar todo.`, "success");
+    }
+
+    // Pide al navegador que no borre estos datos por su cuenta cuando falte espacio.
+    if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(() => {});
+    }
+
+    // ==========================================================
+    // PASO 2: cargar fotos / PDF
+    // ==========================================================
+
+    $("btnRecibos").addEventListener("click", () => $("inputRecibos").click());
+
+    $("inputRecibos").addEventListener("change", async e => {
+
+        const archivos = [...e.target.files];
+        e.target.value = "";
+        if (!archivos.length) return;
+
+        let agregados = 0;
+
+        for (const f of archivos) {
+            try {
+                if (f.type === "application/pdf" || /\.pdf$/i.test(f.name)) {
+                    if (!window.pdfjsLib) throw new Error("no cargó el lector de PDF (revisa tu conexión)");
+                    const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
+                    for (let p = 1; p <= pdf.numPages; p++) {
+                        setStatus($("statusRecibos"), `📄 Leyendo ${f.name}: página ${p} de ${pdf.numPages}…`);
+                        const pagina = await pdf.getPage(p);
+                        const vp0 = pagina.getViewport({ scale: 1 });
+                        const escala = Math.min(3, LADO_MAXIMO / Math.max(vp0.width, vp0.height));
+                        const vp = pagina.getViewport({ scale: escala });
+                        const c = document.createElement("canvas");
+                        c.width = Math.round(vp.width);
+                        c.height = Math.round(vp.height);
+                        await pagina.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+                        await agregarRecibo(c, `${f.name} · pág. ${p}`);
+                        agregados++;
+                    }
+                } else {
+                    setStatus($("statusRecibos"), `🖼️ Cargando ${f.name}…`);
+                    const bmp = await createImageBitmap(f, { imageOrientation: "from-image" });
+                    const esc = Math.min(1, LADO_MAXIMO / Math.max(bmp.width, bmp.height));
+                    const c = document.createElement("canvas");
+                    c.width = Math.round(bmp.width * esc);
+                    c.height = Math.round(bmp.height * esc);
+                    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+                    bmp.close && bmp.close();
+                    await agregarRecibo(c, f.name);
+                    agregados++;
+                }
+            } catch (err) {
+                setStatus($("statusRecibos"), `❌ No se pudo abrir ${f.name}: ${err.message}`, "error");
+            }
+        }
+
+        setStatus($("statusRecibos"), `✅ ${recibos.length} recibo(s) listos (${agregados} nuevo(s)).`, "success");
+        marcarCollagesDesactualizados();
+        indiceVista = Math.max(0, recibos.length - agregados);
+        await mostrarRecibo();
+        renderizarResultados();
+    });
+
+    function agregarRecibo(canvas, nombreArchivo) {
+        return new Promise(res => {
+            canvas.toBlob(blob => {
+                const nuevo = {
+                    id: recibos.reduce((m, r) => Math.max(m, r.id), 0) + 1,
+                    archivo: nombreArchivo,
+                    blob,
+                    ancho: canvas.width,
+                    alto: canvas.height,
+                    zonas: null,          // zonas propias si se ajustaron a mano
+                    formato: formatoActivoId,
+                    resultado: null
+                };
+                recibos.push(nuevo);
+                guardarReciboBD(nuevo).then(res);
+            }, "image/jpeg", 0.9);
+        });
+    }
+
+    $("btnLimpiarRecibos").addEventListener("click", () => {
+        if (leyendo) return;
+        if (recibos.length && !confirm(`¿Quitar las ${recibos.length} capturas?`)) return;
+        recibos = [];
+        indiceVista = 0;
+        limpiarBD();
+        marcarCollagesDesactualizados();
+        mostrarRecibo();
+        renderizarResultados();
+        setStatus($("statusRecibos"), "Aún no hay capturas.");
+    });
+
+    async function cargarImagen(recibo) {
+        return createImageBitmap(recibo.blob);
+    }
+
+    // ==========================================================
+    // PASO 3: zonas (plantilla)
+    // ==========================================================
+
+    const lienzo = $("lienzoZonas");
+    const ctx = lienzo.getContext("2d");
+    let imagenVista = null;
+
+    // Vista del editor: la imagen se dibuja escalada (esc) y desplazada (ox, oy) en píxeles de pantalla.
+    const vista = { esc: 1, ox: 0, oy: 0, ajustada: true };
+    let modoEditor = "dibujar";        // "dibujar" | "ajustar" | "mover"
+    let accion = null;                 // gesto en curso
+    const punteros = new Map();        // dedos / mouse activos (para pellizcar)
+
+    function zonasDe(recibo) {
+        return (recibo && recibo.zonas) || formatoDe(recibo).zonas;
+    }
+
+    function zonasEditables() {
+        const r = recibos[indiceVista];
+        return r && r.zonas ? r.zonas : formatoDe(r).zonas;
+    }
+
+    // ¿Estas zonas son las del formato (y no las propias de un recibo)?
+    function esDelFormato(zonas) {
+        return zonas === formatoDe(recibos[indiceVista]).zonas;
+    }
+
+    function renderizarBotonesZona() {
+        const zonas = zonasDe(recibos[indiceVista]);
+        $("zonaBotones").innerHTML = ZONAS.map(z => `
+            <button type="button" class="zona-btn${zonaActiva === z.id ? " activa" : ""}" style="--c:${z.color}" data-zona="${z.id}">
+                <span class="muestra"></span>
+                <span>${z.nombre}<small>${zonas[z.id] ? "Marcado" : "Sin marcar (no se exporta)"}</small></span>
+                <span class="estado-zona">${zonas[z.id] ? "✅" : "—"}</span>
+            </button>
+        `).join("") + `
+            <div class="pad" aria-label="Ajuste fino de la zona seleccionada">
+                <div class="pad-titulo">Ajuste fino de la zona seleccionada
+                    <select id="padPaso" aria-label="Tamaño del paso">
+                        <option value="1">1 px</option>
+                        <option value="4" selected>4 px</option>
+                        <option value="15">15 px</option>
+                    </select>
+                </div>
+                <div class="pad-grupo">
+                    <span>Mover</span>
+                    <button type="button" data-pad="mover" data-dx="-1" data-dy="0" title="Izquierda">◀</button>
+                    <button type="button" data-pad="mover" data-dx="0" data-dy="-1" title="Arriba">▲</button>
+                    <button type="button" data-pad="mover" data-dx="0" data-dy="1" title="Abajo">▼</button>
+                    <button type="button" data-pad="mover" data-dx="1" data-dy="0" title="Derecha">▶</button>
+                </div>
+                <div class="pad-grupo">
+                    <span>Ancho</span>
+                    <button type="button" data-pad="tam" data-dx="-1" data-dy="0" title="Más angosta">−</button>
+                    <button type="button" data-pad="tam" data-dx="1" data-dy="0" title="Más ancha">+</button>
+                    <span>Alto</span>
+                    <button type="button" data-pad="tam" data-dx="0" data-dy="-1" title="Más baja">−</button>
+                    <button type="button" data-pad="tam" data-dx="0" data-dy="1" title="Más alta">+</button>
+                </div>
+            </div>
+            <button type="button" class="btn-mini" id="btnIrZona">🔍 Acercar a la zona seleccionada</button>
+            <button type="button" class="btn-mini" id="btnBorrarZona">🧽 Borrar la zona seleccionada</button>
+            ${recibos[indiceVista] && recibos[indiceVista].zonas
+                ? '<button type="button" class="btn-mini" id="btnUsarPlantilla">↩️ Este recibo: volver a las zonas de su formato</button>'
+                : ""}
+            <div class="nota" style="margin-top:0">
+                ${recibos[indiceVista] && recibos[indiceVista].zonas
+                    ? "✏️ Estás ajustando zonas <b>solo para este recibo</b>."
+                    : `Las zonas se guardan en el formato <b>${escapeHTML(formatoDe(recibos[indiceVista]).nombre)}</b> y se usan para todos sus recibos. El campo que no marques no sale en la exportación.`}
+            </div>
+        `;
+
+        $("zonaBotones").querySelectorAll("[data-zona]").forEach(b => {
+            b.addEventListener("click", () => {
+                zonaActiva = b.getAttribute("data-zona");
+                renderizarBotonesZona();
+                dibujarLienzo();
+            });
+        });
+
+        $("zonaBotones").querySelectorAll("[data-pad]").forEach(b => {
+            b.addEventListener("click", () => {
+                const paso = +$("padPaso").value;
+                ajustarZonaActiva(b.getAttribute("data-pad"), +b.getAttribute("data-dx") * paso, +b.getAttribute("data-dy") * paso);
+            });
+        });
+
+        $("btnIrZona").addEventListener("click", irAZonaActiva);
+
+        $("btnBorrarZona").addEventListener("click", () => {
+            const r = recibos[indiceVista];
+            const zonas = zonasEditables();
+            delete zonas[zonaActiva];
+            if (esDelFormato(zonas)) guardarPlantilla();
+            zonasCambiaron(esDelFormato(zonas) ? null : r);
+            renderizarBotonesZona();
+            dibujarLienzo();
+        });
+
+        const bp = $("btnUsarPlantilla");
+        if (bp) bp.addEventListener("click", () => {
+            recibos[indiceVista].zonas = null;
+            zonasCambiaron(recibos[indiceVista]);
+            renderizarBotonesZona();
+            dibujarLienzo();
+        });
+    }
+
+    function guardarPlantilla() {
+        // La forma del recibo se recuerda en su formato para el recuadro de la cámara.
+        if (imagenVista) formatoDe(recibos[indiceVista]).aspecto = imagenVista.width / imagenVista.height;
+        guardarFormatos();
+    }
+
+    // Guarda después de un cambio de zona (plantilla general o zonas propias del recibo).
+    function confirmarCambioZona() {
+        const r = recibos[indiceVista];
+        const zonas = zonasEditables();
+        if (esDelFormato(zonas)) guardarPlantilla();
+        zonasCambiaron(esDelFormato(zonas) ? null : r);
+        renderizarBotonesZona();
+    }
+
+    // ---------- Tamaño del lienzo y vista ----------
+
+    function tamanoLienzo() {
+        const b = lienzo.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.max(200, Math.round(b.width)), h = Math.max(200, Math.round(b.height));
+        if (lienzo.width !== Math.round(w * dpr) || lienzo.height !== Math.round(h * dpr)) {
+            lienzo.width = Math.round(w * dpr);
+            lienzo.height = Math.round(h * dpr);
+        }
+        return { w, h, dpr };
+    }
+
+    function ajustarVista() {
+        const { w, h } = tamanoLienzo();
+        if (!imagenVista) return;
+        const esc = Math.min(w / imagenVista.width, h / imagenVista.height) * 0.96;
+        vista.esc = esc;
+        vista.ox = (w - imagenVista.width * esc) / 2;
+        vista.oy = (h - imagenVista.height * esc) / 2;
+        vista.ajustada = true;
+        pintarZoom();
+    }
+
+    function escalaMinima() {
+        const { w, h } = tamanoLienzo();
+        return imagenVista ? Math.min(w / imagenVista.width, h / imagenVista.height) * 0.5 : 0.1;
+    }
+
+    // Zoom alrededor de un punto de la pantalla (px, py).
+    function zoomEn(factor, px, py) {
+        if (!imagenVista) return;
+        const nueva = Math.max(escalaMinima(), Math.min(12, vista.esc * factor));
+        const f = nueva / vista.esc;
+        vista.ox = px - (px - vista.ox) * f;
+        vista.oy = py - (py - vista.oy) * f;
+        vista.esc = nueva;
+        vista.ajustada = false;
+        pintarZoom();
+        dibujarLienzo();
+    }
+
+    function pintarZoom() {
+        if (!imagenVista) { $("zoomTexto").textContent = "—"; return; }
+        const base = Math.min(tamanoLienzo().w / imagenVista.width, tamanoLienzo().h / imagenVista.height) * 0.96;
+        $("zoomTexto").textContent = `${Math.round((vista.esc / base) * 100)} %`;
+    }
+
+    function irAZonaActiva() {
+        const z = zonasDe(recibos[indiceVista])[zonaActiva];
+        if (!z || !imagenVista) return;
+        const { w, h } = tamanoLienzo();
+        const zw = z.w * imagenVista.width, zh = z.h * imagenVista.height;
+        vista.esc = Math.min(12, Math.min(w / (zw * 1.4), h / (zh * 1.8)));
+        vista.ox = w / 2 - (z.x * imagenVista.width + zw / 2) * vista.esc;
+        vista.oy = h / 2 - (z.y * imagenVista.height + zh / 2) * vista.esc;
+        vista.ajustada = false;
+        pintarZoom();
+        dibujarLienzo();
+    }
+
+    // Pantalla -> imagen (en fracciones 0..1) y al revés.
+    function aImagen(px, py) {
+        return {
+            x: (px - vista.ox) / vista.esc / imagenVista.width,
+            y: (py - vista.oy) / vista.esc / imagenVista.height
+        };
+    }
+
+    function aPantalla(z) {
+        return {
+            x: vista.ox + z.x * imagenVista.width * vista.esc,
+            y: vista.oy + z.y * imagenVista.height * vista.esc,
+            w: z.w * imagenVista.width * vista.esc,
+            h: z.h * imagenVista.height * vista.esc
+        };
+    }
+
+    async function mostrarRecibo() {
+
+        const r = recibos[indiceVista];
+        if (imagenVista && imagenVista.close) imagenVista.close();
+        imagenVista = r ? await cargarImagen(r) : null;
+
+        $("textoRecibo").textContent = r
+            ? `Recibo ${indiceVista + 1} de ${recibos.length} · ${r.archivo}`
+            : "—";
+
+        $("pruebaLectura").textContent = "";
+        renderizarFormatos();
+        ajustarVista();
+        renderizarBotonesZona();
+        dibujarLienzo();
+    }
+
+    // ---------- Dibujo ----------
+
+    const MANIJA = 9;   // radio de las manijas (px de pantalla)
+
+    function manijasDe(p) {
+        return {
+            nw: [p.x, p.y], n: [p.x + p.w / 2, p.y], ne: [p.x + p.w, p.y],
+            e: [p.x + p.w, p.y + p.h / 2], se: [p.x + p.w, p.y + p.h], s: [p.x + p.w / 2, p.y + p.h],
+            sw: [p.x, p.y + p.h], w: [p.x, p.y + p.h / 2]
+        };
+    }
+
+    function dibujarLienzo() {
+
+        if (!accion) programarVistaPrevia();
+
+        const { w, h, dpr } = tamanoLienzo();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, w, h);
+
+        if (!imagenVista) {
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Toma o carga un recibo en el paso 1 para marcar las zonas", w / 2, h / 2);
+            ctx.textAlign = "left";
+            return;
+        }
+
+        ctx.imageSmoothingEnabled = vista.esc < 2;
+        ctx.drawImage(imagenVista, vista.ox, vista.oy, imagenVista.width * vista.esc, imagenVista.height * vista.esc);
+
+        const zonas = zonasDe(recibos[indiceVista]);
+
+        ZONAS.forEach(z => {
+            const r = zonas[z.id];
+            if (!r) return;
+            const p = aPantalla(r);
+            const activa = zonaActiva === z.id;
+
+            ctx.fillStyle = z.color + (activa ? "22" : "14");
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.lineWidth = activa ? 2.5 : 1.5;
+            ctx.strokeStyle = z.color;
+            ctx.strokeRect(p.x, p.y, p.w, p.h);
+
+            ctx.font = "bold 13px Arial";
+            const etiqueta = z.nombre;
+            const tw = ctx.measureText(etiqueta).width + 10;
+            ctx.fillStyle = z.color;
+            ctx.fillRect(p.x, p.y - 20, tw, 20);
+            ctx.fillStyle = "white";
+            ctx.fillText(etiqueta, p.x + 5, p.y - 6);
+
+            // Manijas para ajustar (solo en la zona seleccionada).
+            if (activa && modoEditor === "ajustar") {
+                Object.values(manijasDe(p)).forEach(([mx, my]) => {
+                    ctx.fillStyle = "white";
+                    ctx.strokeStyle = z.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(mx - MANIJA / 2 - 1, my - MANIJA / 2 - 1, MANIJA + 2, MANIJA + 2);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            }
+        });
+
+        // Rectángulo que se está dibujando.
+        if (accion && accion.tipo === "dibujar") {
+            const z = ZONAS.find(z => z.id === zonaActiva);
+            ctx.setLineDash([7, 5]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = z.color;
+            ctx.strokeRect(accion.x0, accion.y0, accion.x1 - accion.x0, accion.y1 - accion.y0);
+            ctx.setLineDash([]);
+        }
+    }
+
+    // ---------- Herramientas y zoom (botones) ----------
+
+    function pintarModo() {
+        document.querySelectorAll("[data-modo]").forEach(b => b.classList.toggle("on", b.getAttribute("data-modo") === modoEditor));
+        lienzo.style.cursor = modoEditor === "mover" ? "grab" : modoEditor === "ajustar" ? "default" : "crosshair";
+    }
+
+    document.querySelectorAll("[data-modo]").forEach(b => b.addEventListener("click", () => {
+        modoEditor = b.getAttribute("data-modo");
+        pintarModo();
+        dibujarLienzo();
+    }));
+
+    $("btnZoomMas").addEventListener("click", () => { const { w, h } = tamanoLienzo(); zoomEn(1.4, w / 2, h / 2); });
+    $("btnZoomMenos").addEventListener("click", () => { const { w, h } = tamanoLienzo(); zoomEn(1 / 1.4, w / 2, h / 2); });
+    $("btnZoomAjustar").addEventListener("click", () => { ajustarVista(); dibujarLienzo(); });
+
+    window.addEventListener("resize", () => {
+        if (vista.ajustada) ajustarVista();
+        dibujarLienzo();
+    });
+
+    // ---------- Gestos sobre el lienzo ----------
+
+    function puntoLocal(e) {
+        const b = lienzo.getBoundingClientRect();
+        return { x: e.clientX - b.left, y: e.clientY - b.top };
+    }
+
+    // ¿Qué hay bajo el dedo? (manija o interior de alguna zona)
+    function tocarZona(p) {
+        const zonas = zonasDe(recibos[indiceVista]);
+
+        const activa = zonas[zonaActiva];
+        if (activa) {
+            const m = manijasDe(aPantalla(activa));
+            for (const [nombre, [mx, my]] of Object.entries(m)) {
+                if (Math.abs(p.x - mx) <= MANIJA + 6 && Math.abs(p.y - my) <= MANIJA + 6) return { id: zonaActiva, parte: nombre };
+            }
+        }
+
+        // Interior: primero la activa, luego las demás.
+        const orden = [zonaActiva, ...ZONAS.map(z => z.id).filter(id => id !== zonaActiva)];
+        for (const id of orden) {
+            const z = zonas[id];
+            if (!z) continue;
+            const q = aPantalla(z);
+            if (p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) return { id, parte: "centro" };
+        }
+        return null;
+    }
+
+    lienzo.addEventListener("pointerdown", e => {
+
+        if (!imagenVista) return;
+        lienzo.setPointerCapture(e.pointerId);
+        lienzo.focus({ preventScroll: true });
+
+        const p = puntoLocal(e);
+        punteros.set(e.pointerId, p);
+
+        // Dos dedos: pellizcar para zoom y arrastrar para mover (cancela lo demás).
+        if (punteros.size === 2) {
+            const [a, b] = [...punteros.values()];
+            accion = {
+                tipo: "pellizco",
+                dist: Math.hypot(a.x - b.x, a.y - b.y),
+                cx: (a.x + b.x) / 2,
+                cy: (a.y + b.y) / 2
+            };
+            dibujarLienzo();
+            return;
+        }
+
+        if (punteros.size > 2) return;
+
+        const moverVista = modoEditor === "mover" || e.button === 1 || e.button === 2;
+
+        if (moverVista) {
+            accion = { tipo: "pan", x: p.x, y: p.y };
+            lienzo.style.cursor = "grabbing";
+            return;
+        }
+
+        if (modoEditor === "ajustar") {
+            const t = tocarZona(p);
+            if (t) {
+                if (t.id !== zonaActiva) { zonaActiva = t.id; renderizarBotonesZona(); }
+                const z = zonasEditables()[t.id] || zonasDe(recibos[indiceVista])[t.id];
+                accion = { tipo: "ajustar", parte: t.parte, inicio: aImagen(p.x, p.y), original: { ...z } };
+            } else {
+                accion = { tipo: "pan", x: p.x, y: p.y };
+            }
+            dibujarLienzo();
+            return;
+        }
+
+        // Dibujar un rectángulo nuevo para la zona seleccionada.
+        accion = { tipo: "dibujar", x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    });
+
+    lienzo.addEventListener("pointermove", e => {
+
+        if (!punteros.has(e.pointerId)) return;
+        const p = puntoLocal(e);
+        punteros.set(e.pointerId, p);
+
+        if (!accion) return;
+
+        if (accion.tipo === "pellizco" && punteros.size >= 2) {
+            const [a, b] = [...punteros.values()];
+            const dist = Math.hypot(a.x - b.x, a.y - b.y);
+            const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+            vista.ox += cx - accion.cx;
+            vista.oy += cy - accion.cy;
+            accion.cx = cx;
+            accion.cy = cy;
+            if (accion.dist > 0) zoomEn(dist / accion.dist, cx, cy);
+            accion.dist = dist;
+            return;
+        }
+
+        if (accion.tipo === "pan") {
+            vista.ox += p.x - accion.x;
+            vista.oy += p.y - accion.y;
+            accion.x = p.x;
+            accion.y = p.y;
+            vista.ajustada = false;
+            dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "dibujar") {
+            accion.x1 = p.x;
+            accion.y1 = p.y;
+            dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "ajustar") {
+
+            const actual = aImagen(p.x, p.y);
+            const dx = actual.x - accion.inicio.x, dy = actual.y - accion.inicio.y;
+            const o = accion.original;
+            let { x, y, w, h } = o;
+
+            if (accion.parte === "centro") {
+                x = o.x + dx;
+                y = o.y + dy;
+            } else {
+                if (accion.parte.includes("w")) { x = o.x + dx; w = o.w - dx; }
+                if (accion.parte.includes("e")) { w = o.w + dx; }
+                if (accion.parte.includes("n")) { y = o.y + dy; h = o.h - dy; }
+                if (accion.parte.includes("s")) { h = o.h + dy; }
+            }
+
+            // Tamaño mínimo y dentro de la imagen.
+            const minW = 8 / imagenVista.width, minH = 6 / imagenVista.height;
+            if (w < minW) { if (accion.parte.includes("w")) x -= minW - w; w = minW; }
+            if (h < minH) { if (accion.parte.includes("n")) y -= minH - h; h = minH; }
+            x = Math.max(0, Math.min(1 - w, x));
+            y = Math.max(0, Math.min(1 - h, y));
+            w = Math.min(w, 1 - x);
+            h = Math.min(h, 1 - y);
+
+            zonasEditables()[zonaActiva] = { x, y, w, h };
+            dibujarLienzo();
+        }
+    });
+
+    function soltarPuntero(e) {
+
+        punteros.delete(e.pointerId);
+
+        if (!accion) return;
+
+        if (accion.tipo === "pellizco") {
+            if (punteros.size === 0) accion = null;
+            return;
+        }
+
+        if (accion.tipo === "dibujar") {
+            const x0 = Math.min(accion.x0, accion.x1), y0 = Math.min(accion.y0, accion.y1);
+            const x1 = Math.max(accion.x0, accion.x1), y1 = Math.max(accion.y0, accion.y1);
+            accion = null;
+
+            if (x1 - x0 > 6 && y1 - y0 > 6) {
+                const a = aImagen(x0, y0), b = aImagen(x1, y1);
+                const x = Math.max(0, a.x), y = Math.max(0, a.y);
+                const destino = zonasEditables();
+                destino[zonaActiva] = { x, y, w: Math.min(1, b.x) - x, h: Math.min(1, b.y) - y };
+                confirmarCambioZona();
+
+                // Avanza sola a la siguiente zona que falte; si ya están todas, pasa a ajustar.
+                const desde = ZONAS.findIndex(z => z.id === zonaActiva);
+                const falta = ZONAS.slice(desde + 1).find(z => !destino[z.id]);
+                if (falta) {
+                    zonaActiva = falta.id;
+                } else {
+                    modoEditor = "ajustar";
+                    pintarModo();
+                }
+                renderizarBotonesZona();
+            }
+            dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "ajustar") {
+            accion = null;
+            confirmarCambioZona();
+            dibujarLienzo();
+            return;
+        }
+
+        accion = null;
+        pintarModo();
+        dibujarLienzo();
+    }
+
+    lienzo.addEventListener("pointerup", soltarPuntero);
+    lienzo.addEventListener("pointercancel", soltarPuntero);
+    lienzo.addEventListener("contextmenu", e => e.preventDefault());
+
+    // Rueda del mouse: zoom donde está el cursor.
+    lienzo.addEventListener("wheel", e => {
+        if (!imagenVista) return;
+        e.preventDefault();
+        const p = puntoLocal(e);
+        zoomEn(Math.exp(-e.deltaY * 0.0015), p.x, p.y);
+    }, { passive: false });
+
+    // Ajuste fino con los botones o con las flechas del teclado.
+    function ajustarZonaActiva(tipo, dxPx, dyPx) {
+
+        if (!imagenVista) return;
+        const zonas = zonasEditables();
+        const z = zonas[zonaActiva] || zonasDe(recibos[indiceVista])[zonaActiva];
+        if (!z) return;
+
+        const dx = dxPx / imagenVista.width, dy = dyPx / imagenVista.height;
+        let { x, y, w, h } = z;
+
+        if (tipo === "mover") {
+            x = Math.max(0, Math.min(1 - w, x + dx));
+            y = Math.max(0, Math.min(1 - h, y + dy));
+        } else {
+            // Crece o se encoge desde el centro.
+            w = Math.max(4 / imagenVista.width, Math.min(1, w + dx));
+            h = Math.max(4 / imagenVista.height, Math.min(1, h + dy));
+            x = Math.max(0, Math.min(1 - w, x - dx / 2));
+            y = Math.max(0, Math.min(1 - h, y - dy / 2));
+        }
+
+        zonas[zonaActiva] = { x, y, w, h };
+        confirmarCambioZona();
+        dibujarLienzo();
+    }
+
+    lienzo.addEventListener("keydown", e => {
+        const flechas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        if (!flechas[e.key]) return;
+        e.preventDefault();
+        const paso = e.shiftKey ? 15 : 1;
+        const [dx, dy] = flechas[e.key];
+        ajustarZonaActiva(e.altKey ? "tam" : "mover", dx * paso, dy * paso);
+    });
+
+    pintarModo();
+
+    $("btnAnterior").addEventListener("click", () => {
+        if (indiceVista > 0) { indiceVista--; mostrarRecibo(); }
+    });
+
+    $("btnSiguiente").addEventListener("click", () => {
+        if (indiceVista < recibos.length - 1) { indiceVista++; mostrarRecibo(); }
+    });
+
+    $("btnRehacerEste").addEventListener("click", () => {
+        const r = recibos[indiceVista];
+        if (r) abrirCamara(r.id);
+    });
+
+    // ---------- Formatos: crear, elegir, renombrar, borrar ----------
+
+    function renderizarFormatos() {
+
+        const opciones = formatos.map(f =>
+            `<option value="${f.id}">${escapeHTML(f.nombre)}${ZONAS.some(z => f.zonas[z.id]) ? "" : " (sin zonas)"}</option>`).join("");
+
+        $("selFormato").innerHTML = opciones;
+        $("selFormato").value = String(formatoActivoId);
+
+        const r = recibos[indiceVista];
+        $("selFormatoRecibo").innerHTML = opciones;
+        $("selFormatoRecibo").disabled = !r;
+        if (r) $("selFormatoRecibo").value = String(formatoDe(r).id);
+
+        $("btnBorrarFormato").disabled = formatos.length < 2;
+    }
+
+    function cambiarFormatoActivo(id) {
+        formatoActivoId = id;
+        plantilla = formatoActivo().zonas;
+        guardarFormatos();
+        renderizarFormatos();
+    }
+
+    $("selFormato").addEventListener("change", () => {
+        cambiarFormatoActivo(+$("selFormato").value);
+        setStatus($("statusRecibos"),
+            `📋 Formato activo: ${formatoActivo().nombre}. Las próximas capturas y la cámara usan sus zonas.`, "success");
+    });
+
+    $("selFormatoRecibo").addEventListener("change", async () => {
+        const r = recibos[indiceVista];
+        if (!r) return;
+        r.formato = +$("selFormatoRecibo").value;
+        r.zonas = null;
+        r.tira = null;
+        await guardarReciboBD(r);
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+    $("btnNuevoFormato").addEventListener("click", async () => {
+
+        const nombre = prompt("Nombre del nuevo formato (por ejemplo: Recibo agua, Planilla B):", `Formato ${formatos.length + 1}`);
+        if (!nombre || !nombre.trim()) return;
+
+        const f = {
+            id: formatos.reduce((m, x) => Math.max(m, x.id), 0) + 1,
+            nombre: nombre.trim(),
+            zonas: {},
+            aspecto: imagenVista ? imagenVista.width / imagenVista.height : null
+        };
+        formatos.push(f);
+        cambiarFormatoActivo(f.id);
+
+        // El recibo que estás viendo pasa a ser el ejemplo del formato nuevo.
+        const r = recibos[indiceVista];
+        if (r) {
+            r.formato = f.id;
+            r.zonas = null;
+            r.tira = null;
+            await guardarReciboBD(r);
+        }
+
+        zonaActiva = ZONAS[0].id;
+        modoEditor = "dibujar";
+        pintarModo();
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+
+        setStatus($("statusRecibos"),
+            `➕ Formato "${f.nombre}" creado${r ? " con este recibo como ejemplo" : ""}. Marca sus recuadros en el orden código, nombre, dirección y teléfono (los que tenga).`, "success");
+    });
+
+    $("btnRenombrarFormato").addEventListener("click", () => {
+        const f = formatoActivo();
+        const nombre = prompt("Nuevo nombre del formato:", f.nombre);
+        if (!nombre || !nombre.trim()) return;
+        f.nombre = nombre.trim();
+        guardarFormatos();
+        renderizarFormatos();
+        renderizarBotonesZona();
+        renderizarCapturas();
+        marcarCollagesDesactualizados();
+    });
+
+    $("btnBorrarFormato").addEventListener("click", async () => {
+
+        if (formatos.length < 2) return;
+        const f = formatoActivo();
+        const usados = recibos.filter(r => formatoDe(r) === f);
+        const otro = formatos.find(x => x !== f);
+
+        if (!confirm(`¿Borrar el formato "${f.nombre}"?` +
+            (usados.length ? `\n\nSus ${usados.length} recibo(s) pasarán al formato "${otro.nombre}".` : ""))) return;
+
+        formatos = formatos.filter(x => x !== f);
+        for (const r of usados) {
+            r.formato = otro.id;
+            r.zonas = null;
+            r.tira = null;
+            await guardarReciboBD(r);
+        }
+
+        cambiarFormatoActivo(otro.id);
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+
+
+    // ==========================================================
+    // RECORTES ESTRICTOS DE LAS ZONAS
+    // ==========================================================
+
+    function margenActual() {
+        return (parseFloat($("optMargen").value) || 0) / 100;
+    }
+
+    // Recorta la zona tal cual está marcada (más el margen elegido, 0 % por defecto).
+    function recortarZona(img, zona, margen) {
+
+        const x = Math.max(0, (zona.x - margen) * img.width);
+        const y = Math.max(0, (zona.y - margen) * img.height);
+        const w = Math.max(1, Math.min(img.width - x, (zona.w + 2 * margen) * img.width));
+        const h = Math.max(1, Math.min(img.height - y, (zona.h + 2 * margen) * img.height));
+
+        const c = document.createElement("canvas");
+        c.width = Math.round(w);
+        c.height = Math.round(h);
+        c.getContext("2d").drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
+        return c;
+    }
+
+    async function recortesDe(recibo) {
+        const img = await createImageBitmap(recibo.blob);
+        const zonas = zonasDe(recibo);
+        const margen = margenActual();
+        const out = {};
+        ZONAS.forEach(z => { if (zonas[z.id]) out[z.id] = recortarZona(img, zonas[z.id], margen); });
+        img.close && img.close();
+        return out;
+    }
+
+    // Blanco y negro con contraste estirado: ayuda mucho a cualquier OCR.
+    function mejorarContraste(c) {
+
+        const g = c.getContext("2d");
+        const datos = g.getImageData(0, 0, c.width, c.height);
+        const d = datos.data;
+        const gris = new Float32Array(d.length / 4);
+        const hist = new Uint32Array(256);
+
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+            const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            gris[j] = v;
+            hist[v | 0]++;
+        }
+
+        // Percentiles 2 % y 98 % para que una mancha no arruine el contraste.
+        const total = gris.length;
+        let acum = 0, bajo = 0, alto = 255;
+        for (let v = 0; v < 256; v++) { acum += hist[v]; if (acum >= total * 0.02) { bajo = v; break; } }
+        acum = 0;
+        for (let v = 255; v >= 0; v--) { acum += hist[v]; if (acum >= total * 0.02) { alto = v; break; } }
+        const rango = Math.max(1, alto - bajo);
+
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+            const v = Math.max(0, Math.min(255, ((gris[j] - bajo) / rango) * 255));
+            d[i] = d[i + 1] = d[i + 2] = v;
+        }
+
+        g.putImageData(datos, 0, 0);
+        return c;
+    }
+
+    // Tira pequeña con las zonas lado a lado (para ver y revisar cada captura).
+    async function tiraMiniatura(recibo, alto) {
+
+        const recs = await recortesDe(recibo);
+        const lista = ZONAS.filter(z => recs[z.id]).map(z => recs[z.id]);
+
+        if (!lista.length) return null;
+
+        const escalas = lista.map(c => alto / c.height);
+        const ancho = lista.reduce((s, c, i) => s + c.width * escalas[i], 0) + (lista.length - 1) * 8;
+
+        const t = document.createElement("canvas");
+        t.width = Math.min(1600, Math.round(ancho));
+        t.height = alto;
+
+        const g = t.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, t.width, t.height);
+
+        let x = 0;
+        lista.forEach((c, i) => {
+            const w = c.width * escalas[i];
+            g.drawImage(c, x, 0, w, alto);
+            x += w;
+            if (i < lista.length - 1) {
+                g.fillStyle = "#cbd5e1";
+                g.fillRect(x + 3, 0, 2, alto);
+                x += 8;
+            }
+        });
+
+        return t.toDataURL("image/jpeg", 0.8);
+    }
+
+    // Vista previa bajo el editor de zonas: así queda el recorte de este recibo.
+    let temporizadorVista = null;
+
+    function programarVistaPrevia() {
+        clearTimeout(temporizadorVista);
+        temporizadorVista = setTimeout(async () => {
+            const r = recibos[indiceVista];
+            const cont = $("pruebaLectura");
+            if (!r || !ZONAS.some(z => zonasDe(r)[z.id])) {
+                cont.innerHTML = r ? "Marca las zonas para ver aquí cómo queda el recorte." : "";
+                return;
+            }
+            r.tira = await tiraMiniatura(r, 70);
+            cont.innerHTML = `<b>Así queda el recorte de este recibo:</b><br><img class="tira" src="${r.tira}" alt="Recorte de las zonas">`;
+        }, 250);
+    }
+
+    // ==========================================================
+    // GIRAR FOTOS
+    // ==========================================================
+
+    // Gira un lienzo 90, 180 o 270 grados a la derecha.
+    function rotarCanvas(fuente, grados) {
+
+        grados = ((grados % 360) + 360) % 360;
+        if (!grados) return fuente;
+
+        const c = document.createElement("canvas");
+        const acostado = grados % 180 !== 0;
+        c.width = acostado ? fuente.height : fuente.width;
+        c.height = acostado ? fuente.width : fuente.height;
+
+        const g = c.getContext("2d");
+        g.translate(c.width / 2, c.height / 2);
+        g.rotate((grados * Math.PI) / 180);
+        g.drawImage(fuente, -fuente.width / 2, -fuente.height / 2);
+        return c;
+    }
+
+    // Una zona (en fracciones) después de girar la imagen 90° a la derecha, n veces.
+    function rotarZona(z, grados) {
+        let r = { ...z };
+        for (let k = 0; k < (((grados % 360) + 360) % 360) / 90; k++) {
+            r = { x: 1 - r.y - r.h, y: r.x, w: r.h, h: r.w };
+        }
+        return r;
+    }
+
+    async function rotarRecibo(recibo, grados) {
+
+        const img = await createImageBitmap(recibo.blob);
+        const girado = rotarCanvas(img, grados);
+        img.close && img.close();
+
+        recibo.blob = await new Promise(res => girado.toBlob(res, "image/jpeg", 0.92));
+        recibo.ancho = girado.width;
+        recibo.alto = girado.height;
+        recibo.tira = null;
+
+        // Si el recibo tiene zonas propias, giran con la imagen.
+        if (recibo.zonas) {
+            Object.keys(recibo.zonas).forEach(k => { recibo.zonas[k] = rotarZona(recibo.zonas[k], grados); });
+        }
+
+        await guardarReciboBD(recibo);
+    }
+
+    $("btnGirarUno").addEventListener("click", async () => {
+        const r = recibos[indiceVista];
+        if (!r || leyendo) return;
+        $("btnGirarUno").disabled = true;
+        await rotarRecibo(r, 90);
+        $("btnGirarUno").disabled = false;
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+    $("btnGirarTodos").addEventListener("click", async () => {
+
+        if (!recibos.length || leyendo) return;
+
+        leyendo = true;
+        $("btnGirarTodos").disabled = true;
+
+        for (let i = 0; i < recibos.length; i++) {
+            setStatus($("statusRecibos"), `↻ Girando recibo ${i + 1} de ${recibos.length}…`);
+            await rotarRecibo(recibos[i], 90);
+        }
+
+        leyendo = false;
+        $("btnGirarTodos").disabled = false;
+        setStatus($("statusRecibos"), `↻ ${recibos.length} recibo(s) girados 90° a la derecha.`, "success");
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+    });
+
+    // ==========================================================
+    // LISTA DE CAPTURAS
+    // ==========================================================
+
+    function numeroFormateado(n) {
+        return String(n).padStart(recibos.length >= 100 ? 3 : 2, "0");
+    }
+
+    function renderizarCapturas() {
+
+        const cont = $("listaCapturas");
+        $("totalCapturas").textContent = recibos.length;
+
+        if (!recibos.length) {
+            cont.innerHTML = '<div class="empty-hint">Aún no hay capturas. Usa 📷 Modo cámara o carga fotos / PDF en el paso 1.</div>';
+            return;
+        }
+
+        const sinZonas = !hayAlgunaZona();
+        const variosFormatos = formatos.length > 1;
+
+        cont.innerHTML = recibos.map((r, i) => `
+            <div class="captura" data-i="${i}">
+                <div class="captura-num">${numeroFormateado(i + 1)}</div>
+                <div class="captura-cuerpo">
+                    ${sinZonas
+                        ? '<span class="nota" style="margin:0">Marca las zonas en el paso 2</span>'
+                        : `<img class="tira" alt="Recorte del recibo ${i + 1}" ${r.tira ? `src="${r.tira}"` : ""}>`}
+                    <small>${variosFormatos ? `<b>${escapeHTML(formatoDe(r).nombre)}</b> · ` : ""}${escapeHTML(r.archivo)}${r.zonas ? " · ✂️ zonas propias" : ""}</small>
+                </div>
+                <div class="captura-acciones">
+                    <button type="button" class="btn-mini" data-accion="rehacer" title="Tomar de nuevo esta foto con la cámara (reemplaza la actual)">📷 Rehacer</button>
+                    <button type="button" class="btn-mini" data-accion="archivo" title="Reemplazar con una foto de la galería">🖼️</button>
+                    <button type="button" class="btn-mini" data-accion="girar" title="Girar 90° a la derecha">↻</button>
+                    <button type="button" class="btn-mini" data-accion="zona">✂️ Zonas</button>
+                    <button type="button" class="btn-mini" data-accion="quitar">🗑️</button>
+                </div>
+            </div>
+        `).join("");
+
+        if (!sinZonas) generarTirasPendientes();
+    }
+
+    // ---------- Reemplazar una captura (rehacer la foto) ----------
+
+    let reemplazoArchivoId = null;
+
+    // Pone una foto nueva en lugar de la de un recibo, conservando su número y su formato.
+    async function reemplazarImagen(recibo, canvas, origen) {
+
+        recibo.blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.9));
+        recibo.ancho = canvas.width;
+        recibo.alto = canvas.height;
+        recibo.zonas = null;      // la foto nueva se alinea con las zonas del formato
+        recibo.tira = null;
+        recibo.archivo = `${origen} · rehecho`;
+
+        await guardarReciboBD(recibo);
+        marcarCollagesDesactualizados();
+        renderizarCapturas();
+
+        const i = recibos.indexOf(recibo);
+        if (i === indiceVista) mostrarRecibo();
+        return i;
+    }
+
+    $("inputReemplazo").addEventListener("change", async e => {
+
+        const f = e.target.files[0];
+        e.target.value = "";
+        const r = recibos.find(x => x.id === reemplazoArchivoId);
+        reemplazoArchivoId = null;
+        if (!f || !r) return;
+
+        try {
+            const bmp = await createImageBitmap(f, { imageOrientation: "from-image" });
+            const esc = Math.min(1, LADO_MAXIMO / Math.max(bmp.width, bmp.height));
+            const c = document.createElement("canvas");
+            c.width = Math.round(bmp.width * esc);
+            c.height = Math.round(bmp.height * esc);
+            c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+            bmp.close && bmp.close();
+            const i = await reemplazarImagen(r, c, f.name);
+            setStatus($("statusRecibos"), `🖼️ Recibo ${numeroFormateado(i + 1)} reemplazado con ${f.name}.`, "success");
+        } catch (err) {
+            setStatus($("statusRecibos"), `❌ No se pudo abrir ${f.name}: ${err.message}`, "error");
+        }
+    });
+
+    let generandoTiras = false;
+
+    async function generarTirasPendientes() {
+
+        if (generandoTiras) return;
+        generandoTiras = true;
+
+        for (let i = 0; i < recibos.length; i++) {
+            const r = recibos[i];
+            if (!r.tira) {
+                try { r.tira = await tiraMiniatura(r, 56); } catch (e) { r.tira = null; }
+            }
+            const img = document.querySelector(`.captura[data-i="${i}"] img.tira`);
+            if (img && r.tira && img.getAttribute("src") !== r.tira) img.src = r.tira;
+        }
+
+        generandoTiras = false;
+    }
+
+    $("listaCapturas").addEventListener("click", async e => {
+
+        const b = e.target.closest("button[data-accion]");
+        if (!b) return;
+
+        const i = +b.closest(".captura").getAttribute("data-i");
+        const r = recibos[i];
+        if (!r) return;
+
+        if (b.getAttribute("data-accion") === "rehacer") {
+            abrirCamara(r.id);
+            return;
+        }
+
+        if (b.getAttribute("data-accion") === "archivo") {
+            reemplazoArchivoId = r.id;
+            $("inputReemplazo").click();
+            return;
+        }
+
+        if (b.getAttribute("data-accion") === "girar") {
+            b.disabled = true;
+            await rotarRecibo(r, 90);
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            if (i === indiceVista) mostrarRecibo();
+            return;
+        }
+
+        if (b.getAttribute("data-accion") === "quitar") {
+            borrarReciboBD(r.id);
+            recibos.splice(i, 1);
+            indiceVista = Math.min(indiceVista, Math.max(0, recibos.length - 1));
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            mostrarRecibo();
+        } else {
+            indiceVista = i;
+            if (!r.zonas) { r.zonas = JSON.parse(JSON.stringify(formatoDe(r).zonas)); guardarReciboBD(r); }
+            r.tira = null;
+            await mostrarRecibo();
+            $("lienzoZonas").scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    });
+
+    // ==========================================================
+    // COLLAGES
+    // ==========================================================
+
+    function marcarCollagesDesactualizados() {
+        if (!collages.length) return;
+        collages.forEach(c => URL.revokeObjectURL(c.url));
+        collages = [];
+        $("listaCollages").innerHTML =
+            '<div class="nota">Las capturas o las opciones cambiaron. Pulsa 🧩 Generar collages otra vez.</div>';
+        $("accionesCollages").hidden = true;
+    }
+
+    const PAD = 14;          // espacio interno de cada fila
+    const HUECO = 24;        // espacio entre columnas
+    const ANCHO_NUM = 150;   // columna del número
+    const ALTO_CABECERA = 96;
+
+    function dibujarNumero(g, n, x, y, w, h) {
+        g.fillStyle = "#111827";
+        g.font = "bold 56px Arial";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(n, x + w / 2, y + h / 2);
+        g.textAlign = "left";
+        g.textBaseline = "alphabetic";
+    }
+
+    const ANCHO_ROTULO = 210;   // columna de rótulos en la disposición "ficha"
+    const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
+
+    // lote: [{ recibo, numero }]
+    async function construirCollage(lote, info, opciones) {
+
+        // Solo salen los campos que tienen recuadro en algún recibo del lote (en orden fijo).
+        const zonasUsadas = ZONAS.filter(z => lote.some(it => zonasDe(it.recibo)[z.id]));
+        const ficha = opciones.disposicion === "apilado";
+        const rotulos = ficha && opciones.rotulos;
+
+        // 1) Recortes escalados al mismo ancho por campo: todas las filas quedan parejas,
+        //    y los recuadros de varias líneas conservan todas sus líneas.
+        const filas = [];
+
+        for (const it of lote) {
+
+            const recs = await recortesDe(it.recibo);
+            const celdas = {};
+
+            zonasUsadas.forEach(z => {
+                const c = recs[z.id];
+                if (!c) return;
+                const anchoCol = ficha ? ANCHO_FICHA : z.ancho;
+                const esc = Math.min(3, anchoCol / c.width);
+                const e = document.createElement("canvas");
+                e.width = Math.max(1, Math.round(c.width * esc));
+                e.height = Math.max(1, Math.round(c.height * esc));
+                const g = e.getContext("2d");
+                g.imageSmoothingQuality = "high";
+                g.drawImage(c, 0, 0, e.width, e.height);
+                if (opciones.contraste) mejorarContraste(e);
+                celdas[z.id] = e;
+            });
+
+            let alto;
+            if (ficha) {
+                // Cada campo ocupa su propio renglón (aunque falte, deja el rótulo para no descuadrar).
+                alto = zonasUsadas.reduce((s, z) => s + Math.max(celdas[z.id] ? celdas[z.id].height : 0, rotulos ? 44 : 0) + 12, 0) - 12 + 2 * PAD;
+            } else {
+                alto = Math.max(60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * PAD;
+            }
+
+            filas.push({ numero: it.numero, celdas, alto: Math.max(90, alto) });
+        }
+
+        // 2) Tamaño del lienzo.
+        const anchoContenido = ficha
+            ? (rotulos ? ANCHO_ROTULO : 0) + ANCHO_FICHA
+            : zonasUsadas.reduce((s, z) => s + z.ancho, 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
+
+        const W = ANCHO_NUM + anchoContenido + 2 * PAD;
+        const H = ALTO_CABECERA + filas.reduce((s, f) => s + f.alto, 0) + PAD;
+
+        const c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        const g = c.getContext("2d");
+
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, W, H);
+
+        // 3) Cabecera.
+        const nums = lote.map(it => it.numero);
+        g.fillStyle = "#111827";
+        g.font = "bold 30px Arial";
+        g.fillText(
+            `Lote ${info.indice + 1} de ${info.total}` +
+            (info.formato ? ` · ${info.formato}` : "") +
+            ` · ${lote.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`,
+            PAD, 40);
+
+        g.font = "bold 22px Arial";
+        g.fillStyle = "#475569";
+        g.fillText("N°", PAD + 40, 82);
+
+        if (!ficha) {
+            let x = ANCHO_NUM + PAD;
+            zonasUsadas.forEach(z => {
+                g.fillText(z.rotulo, x, 82);
+                x += z.ancho + HUECO;
+            });
+        } else {
+            g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), ANCHO_NUM + PAD, 82);
+        }
+
+        g.fillStyle = "#111827";
+        g.fillRect(0, ALTO_CABECERA - 4, W, 3);
+
+        // 4) Filas.
+        let y = ALTO_CABECERA;
+
+        filas.forEach((f, k) => {
+
+            if (k % 2 === 1) {
+                g.fillStyle = "#f8fafc";
+                g.fillRect(0, y, W, f.alto);
+            }
+
+            dibujarNumero(g, numeroFormateado(f.numero), 0, y, ANCHO_NUM, f.alto);
+
+            if (ficha) {
+                let yy = y + PAD;
+                zonasUsadas.forEach(z => {
+                    const e = f.celdas[z.id];
+                    const altoCampo = Math.max(e ? e.height : 0, rotulos ? 44 : 0);
+                    let x = ANCHO_NUM + PAD;
+                    if (rotulos) {
+                        g.fillStyle = "#111827";
+                        g.font = "bold 26px Arial";
+                        g.fillText(z.rotulo + ":", x, yy + Math.min(altoCampo, 60) / 2 + 9);
+                        x += ANCHO_ROTULO;
+                    }
+                    if (e) g.drawImage(e, x, yy);
+                    yy += altoCampo + 12;
+                });
+            } else {
+                let x = ANCHO_NUM + PAD;
+                zonasUsadas.forEach(z => {
+                    const e = f.celdas[z.id];
+                    if (e) g.drawImage(e, x, y + PAD);
+                    x += z.ancho + HUECO;
+                });
+            }
+
+            g.fillStyle = "#94a3b8";
+            g.fillRect(0, y + f.alto - 2, W, 2);
+            y += f.alto;
+        });
+
+        // Línea vertical tras la columna del número.
+        g.fillStyle = "#cbd5e1";
+        g.fillRect(ANCHO_NUM - 2, ALTO_CABECERA, 2, H - ALTO_CABECERA);
+
+        const tipo = opciones.formato === "png" ? "image/png" : "image/jpeg";
+        const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
+        const ext = opciones.formato === "png" ? "png" : "jpg";
+        const slug = info.formato
+            ? "_" + info.formato.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+            : "";
+
+        return {
+            blob,
+            url: URL.createObjectURL(blob),
+            nombre: `collage_${String(info.indice + 1).padStart(2, "0")}${slug}.${ext}`,
+            numeros: nums,
+            formato: info.formato || "",
+            archivos: lote.map(it => it.recibo.archivo),
+            ancho: W,
+            alto: H
+        };
+    }
+
+    $("btnGenerar").addEventListener("click", async () => {
+
+        if (leyendo) return;
+
+        if (!recibos.length) {
+            setStatus($("statusCollages"), "⚠️ Primero toma o carga capturas.", "warning");
+            return;
+        }
+
+        if (!hayAlgunaZona()) {
+            setStatus($("statusCollages"), "⚠️ Marca las zonas en el paso 2.", "warning");
+            return;
+        }
+
+        const opciones = {
+            porCollage: Math.max(1, parseInt($("optPorCollage").value, 10) || 15),
+            disposicion: $("optDisposicion").value,
+            contraste: $("optContraste").checked,
+            formato: $("optFormato").value,
+            rotulos: $("optRotulos").checked,
+            separar: $("optSeparar").checked
+        };
+
+        marcarCollagesDesactualizados();
+        leyendo = true;
+        $("btnGenerar").disabled = true;
+
+        // Cada recibo conserva su número de captura, aunque se agrupe por formato.
+        const items = recibos.map((r, i) => ({ recibo: r, numero: i + 1 }));
+        const grupos = [];
+
+        if (opciones.separar && formatos.length > 1) {
+            formatos.forEach(f => {
+                const g = items.filter(it => formatoDe(it.recibo).id === f.id);
+                if (g.length) grupos.push({ formato: f.nombre, items: g });
+            });
+        } else {
+            grupos.push({ formato: "", items });
+        }
+
+        const lotes = [];
+        grupos.forEach(gr => {
+            for (let i = 0; i < gr.items.length; i += opciones.porCollage) {
+                lotes.push({ formato: gr.formato, items: gr.items.slice(i, i + opciones.porCollage) });
+            }
+        });
+
+        try {
+            for (let k = 0; k < lotes.length; k++) {
+                setStatus($("statusCollages"), `🧩 Armando collage ${k + 1} de ${lotes.length}…`);
+                $("barra").style.width = `${(k / lotes.length) * 100}%`;
+                collages.push(await construirCollage(lotes[k].items, { indice: k, total: lotes.length, formato: lotes[k].formato }, opciones));
+            }
+            $("barra").style.width = "100%";
+            setStatus($("statusCollages"),
+                `✅ ${collages.length} collage(s) listos con ${recibos.length} recibos (${opciones.porCollage} por imagen` +
+                (grupos.length > 1 ? `, separados en ${grupos.length} formatos` : "") + ").", "success");
+        } catch (err) {
+            setStatus($("statusCollages"), "❌ No se pudieron armar los collages: " + err.message, "error");
+        }
+
+        leyendo = false;
+        $("btnGenerar").disabled = false;
+        renderizarCollages();
+    });
+
+    function renderizarCollages() {
+
+        if (!collages.length) {
+            $("listaCollages").innerHTML = "";
+            $("accionesCollages").hidden = true;
+            return;
+        }
+
+        $("accionesCollages").hidden = false;
+
+        $("listaCollages").innerHTML = collages.map((c, i) => `
+            <div class="collage">
+                <a href="${c.url}" target="_blank" rel="noopener"><img src="${c.url}" alt="Collage ${i + 1}"></a>
+                <div class="collage-pie">
+                    <span><b>Collage ${i + 1}</b>${c.formato ? ` · ${escapeHTML(c.formato)}` : ""} · ${c.numeros.length} recibos<br>
+                    <small>N° ${numeroFormateado(Math.min(...c.numeros))}–${numeroFormateado(Math.max(...c.numeros))} · ${c.ancho}×${c.alto} px · ${(c.blob.size / 1024 / 1024).toFixed(1)} MB</small></span>
+                    <button type="button" class="btn-mini" data-collage="${i}">⬇️ Descargar</button>
+                </div>
+            </div>
+        `).join("");
+
+        $("listaCollages").querySelectorAll("button[data-collage]").forEach(b => {
+            b.addEventListener("click", () => {
+                const c = collages[+b.getAttribute("data-collage")];
+                descargar(c.blob, c.nombre);
+            });
+        });
+    }
+
+    function descargar(blob, nombre) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+
+    // Índice: qué recibo quedó en qué collage y en qué fila (sirve para cuadrar el OCR).
+    function indiceCSV() {
+        const q = s => /[",\n]/.test(String(s)) ? '"' + String(s).replace(/"/g, '""') + '"' : s;
+        const filas = ["numero,collage,fila_en_collage,formato,archivo"];
+
+        if (collages.length) {
+            collages.forEach((c, k) => {
+                c.numeros.forEach((n, f) => {
+                    filas.push([n, k + 1, f + 1, q(c.formato || formatoDe(recibos[n - 1]).nombre), q(c.archivos[f])].join(","));
+                });
+            });
+        } else {
+            recibos.forEach((r, i) => filas.push([i + 1, "", "", q(formatoDe(r).nombre), q(r.archivo)].join(",")));
+        }
+
+        return filas.join("\n");
+    }
+
+    $("btnZip").addEventListener("click", async () => {
+
+        if (!collages.length) return;
+        if (!window.JSZip) {
+            setStatus($("statusCollages"), "❌ No cargó la librería ZIP (revisa tu conexión). Descarga los collages uno por uno.", "error");
+            return;
+        }
+
+        setStatus($("statusCollages"), "📦 Armando el ZIP…");
+        const zip = new JSZip();
+        collages.forEach(c => zip.file(c.nombre, c.blob));
+        zip.file("indice_recibos.csv", "﻿" + indiceCSV());
+        const blob = await zip.generateAsync({ type: "blob" });
+        descargar(blob, `collages_recibos_${new Date().toISOString().slice(0, 10)}.zip`);
+        setStatus($("statusCollages"), `📦 ZIP descargado con ${collages.length} collage(s) y el índice de recibos.`, "success");
+    });
+
+    $("btnPdf").addEventListener("click", async () => {
+
+        if (!collages.length) return;
+        if (!window.jspdf) {
+            setStatus($("statusCollages"), "❌ No cargó la librería PDF (revisa tu conexión). Usa el ZIP.", "error");
+            return;
+        }
+
+        setStatus($("statusCollages"), "📄 Armando el PDF…");
+
+        const aDataURL = blob => new Promise(res => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.readAsDataURL(blob);
+        });
+
+        // Una página por collage, del tamaño exacto de la imagen.
+        const pt = px => px * 0.75;
+        let pdf = null;
+
+        for (const c of collages) {
+            const formato = [pt(c.ancho), pt(c.alto)];
+            const orient = c.ancho > c.alto ? "landscape" : "portrait";
+            if (!pdf) pdf = new jspdf.jsPDF({ orientation: orient, unit: "pt", format: formato });
+            else pdf.addPage(formato, orient);
+            pdf.addImage(await aDataURL(c.blob), c.nombre.endsWith(".png") ? "PNG" : "JPEG", 0, 0, formato[0], formato[1]);
+        }
+
+        pdf.save(`collages_recibos_${new Date().toISOString().slice(0, 10)}.pdf`);
+        setStatus($("statusCollages"), `📄 PDF descargado con ${collages.length} página(s).`, "success");
+    });
+
+    $("btnIndice").addEventListener("click", () => {
+        descargar(new Blob(["﻿" + indiceCSV()], { type: "text/csv;charset=utf-8" }), "indice_recibos.csv");
+    });
+
+
+    // Cuando cambian las zonas: se rehacen las miniaturas y los collages quedan viejos.
+    function zonasCambiaron(recibo) {
+        if (recibo) {
+            recibo.tira = null;
+            clearTimeout(recibo._tGuardar);
+            recibo._tGuardar = setTimeout(() => guardarReciboBD(recibo), 500);
+        }
+        else recibos.forEach(r => { if (!r.zonas) r.tira = null; });
+        marcarCollagesDesactualizados();
+        clearTimeout(zonasCambiaron.t);
+        zonasCambiaron.t = setTimeout(renderizarCapturas, 300);
+    }
+    // ==========================================================
+    // MODO CÁMARA CON SEGMENTACIÓN (recuadro + zonas encima de la imagen)
+    // ==========================================================
+    //
+    // - El recuadro blanco es la hoja: la foto se recorta exactamente ahí.
+    // - Dentro del recuadro se dibujan las zonas de la plantilla (nombre,
+    //   dirección, código) en la misma posición relativa que marcaste en el
+    //   paso 3. Alinea el recibo para que el texto caiga dentro de cada zona.
+    // - Cada captura se agrega como recibo y se lee en segundo plano, así
+    //   puedes seguir tomando fotos sin esperar.
+    // - La cámara en vivo solo funciona en páginas https:// (o localhost).
+
+    const CLAVE_ASPECTO = "ocrRecibos.aspecto";
+
+    const FORMAS = [
+        { id: "plantilla", nombre: "Como mi plantilla" },
+        { id: "vertical", nombre: "Hoja vertical", r: 0.75 },
+        { id: "horizontal", nombre: "Hoja horizontal", r: 1.33 }
+    ];
+
+    const cam = {
+        abierta: false,
+        stream: null,
+        track: null,
+        forma: 0,
+        cuadricula: true,
+        linterna: false,
+        giro: (() => { try { return (parseInt(localStorage.getItem("recortes.giroCamara"), 10) || 0) % 360; } catch (e) { return 0; } })(),
+        auto: false,
+        verificarNitidez: true,
+        marco: null,               // recuadro en píxeles CSS de la pantalla
+        cola: Promise.resolve(),
+        enCola: 0,
+        capturados: 0,
+        ultimaCaptura: 0,
+        firmaUltima: null,         // miniatura de la última captura (para no repetir el mismo recibo)
+        firmaPrevia: null,
+        quietoDesde: 0,
+        timerAuto: null,
+        pendienteBorrosa: null,
+        reemplazar: null           // id del recibo que se está rehaciendo (o null)
+    };
+
+    // Formato que se muestra en la cámara: el del recibo que se rehace, o el activo.
+    function formatoCamara() {
+        if (cam.reemplazar) {
+            const r = recibos.find(x => x.id === cam.reemplazar);
+            if (r) return formatoDe(r);
+        }
+        return formatoActivo();
+    }
+
+    function aspectoPlantilla() {
+        const f = formatoCamara();
+        if (f.aspecto > 0.2 && f.aspecto < 5) return f.aspecto;
+        const r = recibos.find(x => formatoDe(x) === f) || recibos[0];
+        return r ? r.ancho / r.alto : 0.75;
+    }
+
+    function aspectoActual() {
+        const f = FORMAS[cam.forma];
+        const a = f.id === "plantilla" ? aspectoPlantilla() : f.r;
+        // Con giro de 90° o 270°, la hoja derecha se ve acostada en la cámara.
+        return cam.giro % 180 ? 1 / a : a;
+    }
+
+    // ---------- Abrir / cerrar ----------
+
+    $("btnCamara").addEventListener("click", () => abrirCamara(null));
+
+    // reemplazarId: si viene, la próxima foto reemplaza a ese recibo (rehacer).
+    async function abrirCamara(reemplazarId) {
+
+        cam.reemplazar = reemplazarId || null;
+
+        if (leyendo) {
+            setStatus($("statusRecibos"), "⏳ Espera a que termine la lectura en curso.", "warning");
+            return;
+        }
+
+        if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus($("statusRecibos"),
+                "❌ La cámara en vivo solo funciona si la página está en una dirección https:// " +
+                "(por ejemplo GitHub Pages). Mientras tanto usa 📸 Foto con la cámara del celular.", "error");
+            return;
+        }
+
+        try {
+            cam.stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 3840 },
+                    height: { ideal: 2160 }
+                }
+            });
+        } catch (err) {
+            setStatus($("statusRecibos"),
+                err.name === "NotAllowedError"
+                    ? "❌ No se dio permiso para usar la cámara. Actívalo en los permisos del sitio y vuelve a intentar."
+                    : "❌ No se pudo abrir la cámara: " + err.message, "error");
+            return;
+        }
+
+        cam.track = cam.stream.getVideoTracks()[0];
+
+        // Enfoque continuo si el celular lo permite.
+        try {
+            const caps = cam.track.getCapabilities ? cam.track.getCapabilities() : {};
+            if (caps.focusMode && caps.focusMode.includes("continuous")) {
+                await cam.track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+            }
+            $("camLinterna").hidden = !caps.torch;
+        } catch (e) {
+            $("camLinterna").hidden = true;
+        }
+
+        const video = $("camVideo");
+        video.srcObject = cam.stream;
+        await video.play().catch(() => {});
+
+        cam.abierta = true;
+        cam.capturados = 0;
+        cam.firmaUltima = null;
+        $("camara").hidden = false;
+        document.body.style.overflow = "hidden";
+        history.pushState({ camara: true }, "");
+
+        pintarBotonesCamara();
+        actualizarContador();
+        pintarReemplazo();
+        pintarFormatoCamara();
+        mostrarAvisoCamara(ZONAS.some(z => formatoCamara().zonas[z.id])
+            ? "Alinea el recibo dentro del recuadro, con el texto dentro de cada zona."
+            : "Este formato aún no tiene zonas: toma un recibo, márcale las zonas en el paso 2 y vuelve a la cámara.", 4000);
+
+        // Esperar a que el video tenga tamaño antes de dibujar.
+        const listo = () => { calcularMarco(); dibujarSegmentacion(); };
+        if (video.videoWidth) listo(); else video.addEventListener("loadedmetadata", listo, { once: true });
+
+        if (cam.auto) iniciarAuto();
+    }
+
+    function cerrarCamara(desdeHistorial) {
+
+        if (!cam.abierta) return;
+
+        cam.abierta = false;
+        detenerAuto();
+
+        if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
+        cam.stream = null;
+        cam.track = null;
+        cam.linterna = false;
+
+        $("camara").hidden = true;
+        document.body.style.overflow = "";
+
+        if (!desdeHistorial && history.state && history.state.camara) history.back();
+
+        const rehecho = cam.reemplazar ? recibos.findIndex(x => x.id === cam.reemplazar) : -1;
+        cam.reemplazar = null;
+        $("camMas").hidden = true;
+
+        indiceVista = rehecho >= 0 ? rehecho : Math.max(0, recibos.length - 1);
+        mostrarRecibo();
+        renderizarResultados();
+
+        if (rehecho >= 0) {
+            const tarjeta = document.querySelector(`.captura[data-i="${rehecho}"]`);
+            if (tarjeta) tarjeta.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else if (cam.capturados) {
+            setStatus($("statusRecibos"),
+                `📷 ${cam.capturados} recibo(s) capturados con la cámara · ${recibos.length} en total.`, "success");
+        }
+    }
+
+    $("camCerrar").addEventListener("click", () => cerrarCamara(false));
+
+    window.addEventListener("popstate", () => {
+        if (cam.abierta) cerrarCamara(true);
+    });
+
+    window.addEventListener("resize", () => {
+        if (!cam.abierta) return;
+        calcularMarco();
+        dibujarSegmentacion();
+    });
+
+    // ---------- Geometría: recuadro en pantalla <-> píxeles del video ----------
+
+    function calcularMarco() {
+
+        const cont = $("camVista").getBoundingClientRect();
+        const W = cont.width, H = cont.height;
+
+        // Espacio para las barras de arriba y abajo.
+        const margenX = W * 0.06;
+        const arriba = document.querySelector(".cam-barra-sup").offsetHeight + 12;
+        const abajo = document.querySelector(".cam-barra-inf").offsetHeight + 12;
+        const maxW = W - 2 * margenX;
+        const maxH = H - arriba - abajo;
+
+        const a = aspectoActual();
+        let w = maxW, h = w / a;
+        if (h > maxH) { h = maxH; w = h * a; }
+
+        cam.marco = { x: (W - w) / 2, y: arriba + (maxH - h) / 2, w, h, W, H };
+    }
+
+    // El video se muestra con object-fit: cover (recortado para llenar la pantalla).
+    function marcoEnVideo() {
+
+        const video = $("camVideo");
+        const VW = video.videoWidth, VH = video.videoHeight;
+        const { W, H, x, y, w, h } = cam.marco;
+
+        const esc = Math.max(W / VW, H / VH);
+        const offX = (W - VW * esc) / 2;
+        const offY = (H - VH * esc) / 2;
+
+        const vx = Math.max(0, (x - offX) / esc);
+        const vy = Math.max(0, (y - offY) / esc);
+
+        return {
+            x: vx,
+            y: vy,
+            w: Math.min(VW - vx, w / esc),
+            h: Math.min(VH - vy, h / esc)
+        };
+    }
+
+    // ---------- Dibujo de la segmentación ----------
+
+    function dibujarSegmentacion(estadoAuto) {
+
+        const lienzoCam = $("camOverlay");
+        const { W, H, x, y, w, h } = cam.marco;
+        const dpr = window.devicePixelRatio || 1;
+
+        lienzoCam.width = Math.round(W * dpr);
+        lienzoCam.height = Math.round(H * dpr);
+
+        const g = lienzoCam.getContext("2d");
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, W, H);
+
+        // Oscurecer todo lo que queda fuera del recuadro.
+        g.fillStyle = "rgba(0, 0, 0, 0.55)";
+        g.beginPath();
+        g.rect(0, 0, W, H);
+        g.rect(x, y, w, h);
+        g.fill("evenodd");
+
+        // Cuadrícula de alineación (tercios).
+        if (cam.cuadricula) {
+            g.strokeStyle = "rgba(255, 255, 255, 0.35)";
+            g.lineWidth = 1;
+            g.setLineDash([4, 6]);
+            for (let k = 1; k < 3; k++) {
+                g.beginPath(); g.moveTo(x + (w * k) / 3, y); g.lineTo(x + (w * k) / 3, y + h); g.stroke();
+                g.beginPath(); g.moveTo(x, y + (h * k) / 3); g.lineTo(x + w, y + (h * k) / 3); g.stroke();
+            }
+            g.setLineDash([]);
+        }
+
+        // Zonas de la plantilla (segmentos).
+        {
+            ZONAS.forEach(z => {
+                // Las zonas están marcadas sobre el recibo derecho; en la cámara se muestran
+                // giradas al revés del giro que se le aplicará a la foto.
+                const zf = formatoCamara().zonas[z.id];
+                const r = zf ? rotarZona(zf, (360 - cam.giro) % 360) : null;
+                if (!r) return;
+                const zx = x + r.x * w, zy = y + r.y * h, zw = r.w * w, zh = r.h * h;
+                g.fillStyle = z.color + "33";
+                g.fillRect(zx, zy, zw, zh);
+                g.strokeStyle = z.color;
+                g.lineWidth = 3;
+                g.strokeRect(zx, zy, zw, zh);
+
+                g.font = "bold 13px Arial";
+                const etiqueta = z.nombre;
+                const tw = g.measureText(etiqueta).width + 10;
+                g.fillStyle = z.color;
+                g.fillRect(zx, Math.max(y, zy - 20), tw, 20);
+                g.fillStyle = "white";
+                g.fillText(etiqueta, zx + 5, Math.max(y, zy - 20) + 14);
+            });
+        }
+
+        // Marco con esquinas; verde cuando el celular está quieto (modo automático).
+        const color = estadoAuto === "quieto" ? "#22c55e" : estadoAuto === "moviendo" ? "#facc15" : "#ffffff";
+        g.strokeStyle = color;
+        g.lineWidth = 2;
+        g.strokeRect(x, y, w, h);
+
+        const L = Math.min(34, w / 5, h / 5);
+        g.lineWidth = 6;
+        g.lineCap = "round";
+        [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(([cx, cy, sx, sy]) => {
+            g.beginPath();
+            g.moveTo(cx + sx * L, cy);
+            g.lineTo(cx, cy);
+            g.lineTo(cx, cy + sy * L);
+            g.stroke();
+        });
+
+        $("camForma").textContent = "▭ " + FORMAS[cam.forma].nombre;
+    }
+
+    // ---------- Botones de la cámara ----------
+
+    function pintarBotonesCamara() {
+        $("camCuadricula").classList.toggle("on", cam.cuadricula);
+        $("camLinterna").classList.toggle("on", cam.linterna);
+        $("camAuto").classList.toggle("on", cam.auto);
+        $("camAuto").title = cam.auto ? "Captura automática: activada" : "Captura automática: desactivada";
+        $("camNitidez").classList.toggle("on", cam.verificarNitidez);
+    }
+
+    function pintarGiro() {
+        $("camGiro").textContent = `🔄 ${cam.giro}°`;
+        $("camGiro").classList.toggle("on", cam.giro !== 0);
+    }
+
+    $("camGiro").addEventListener("click", () => {
+        cam.giro = (cam.giro + 90) % 360;
+        try { localStorage.setItem("recortes.giroCamara", String(cam.giro)); } catch (e) { /* sin almacenamiento */ }
+        pintarGiro();
+        calcularMarco();
+        dibujarSegmentacion();
+        mostrarAvisoCamara(cam.giro
+            ? `Cada foto se girará ${cam.giro}° a la derecha al guardarla. Alinea el recibo con las zonas tal como se ven.`
+            : "Las fotos se guardan sin girar.", 3500);
+    });
+
+    pintarGiro();
+
+    $("camForma").addEventListener("click", () => {
+        cam.forma = (cam.forma + 1) % FORMAS.length;
+        calcularMarco();
+        dibujarSegmentacion();
+    });
+
+    $("camCuadricula").addEventListener("click", () => {
+        cam.cuadricula = !cam.cuadricula;
+        pintarBotonesCamara();
+        dibujarSegmentacion();
+    });
+
+    $("camNitidez").addEventListener("click", () => {
+        cam.verificarNitidez = !cam.verificarNitidez;
+        pintarBotonesCamara();
+    });
+
+    $("camLinterna").addEventListener("click", async () => {
+        if (!cam.track) return;
+        try {
+            cam.linterna = !cam.linterna;
+            await cam.track.applyConstraints({ advanced: [{ torch: cam.linterna }] });
+        } catch (e) {
+            cam.linterna = false;
+            mostrarAvisoCamara("Este celular no permite encender la linterna desde el navegador.");
+        }
+        pintarBotonesCamara();
+    });
+
+    $("camAuto").addEventListener("click", () => {
+        cam.auto = !cam.auto;
+        pintarBotonesCamara();
+        if (cam.auto) {
+            iniciarAuto();
+            mostrarAvisoCamara("Automático: deja el celular quieto sobre el recibo y la foto se toma sola. Cambia de recibo para la siguiente.", 4000);
+        } else {
+            detenerAuto();
+            dibujarSegmentacion();
+        }
+    });
+
+    $("camCapturar").addEventListener("click", () => capturar(false));
+
+    // ---------- Formato, menú "Más" y aviso de reemplazo ----------
+
+    function pintarFormatoCamara() {
+        const f = formatoCamara();
+        $("camFormato").textContent = "📋 " + f.nombre;
+        $("camFormato").disabled = !!cam.reemplazar;
+        $("camFormato").style.opacity = cam.reemplazar ? 0.6 : 1;
+    }
+
+    $("camFormato").addEventListener("click", () => {
+        if (cam.reemplazar || formatos.length < 2) {
+            if (formatos.length < 2) mostrarAvisoCamara("Solo hay un formato. Crea otro en el paso 2 con ➕ Nuevo formato.");
+            return;
+        }
+        const i = formatos.findIndex(f => f.id === formatoActivoId);
+        cambiarFormatoActivo(formatos[(i + 1) % formatos.length].id);
+        pintarFormatoCamara();
+        calcularMarco();
+        dibujarSegmentacion();
+        mostrarAvisoCamara(`📋 Formato: <b>${escapeHTML(formatoActivo().nombre)}</b>. Las próximas fotos usan sus zonas.`);
+    });
+
+    $("camMasBtn").addEventListener("click", () => {
+        $("camMas").hidden = !$("camMas").hidden;
+    });
+
+    function pintarReemplazo() {
+        const r = cam.reemplazar ? recibos.find(x => x.id === cam.reemplazar) : null;
+        const aviso = $("camReemplazo");
+        if (!r) { aviso.hidden = true; return; }
+        aviso.innerHTML = `<span>📷 Rehaciendo el recibo #${numeroFormateado(recibos.indexOf(r) + 1)}: la próxima foto lo reemplaza</span>
+            <button type="button" id="camCancelarReemplazo">Cancelar</button>`;
+        aviso.hidden = false;
+        $("camCancelarReemplazo").addEventListener("click", () => cerrarCamara(false));
+    }
+
+    // ---------- Capturar ----------
+
+    function recortarFotograma() {
+
+        const video = $("camVideo");
+        if (!video.videoWidth) return null;
+
+        const m = marcoEnVideo();
+        const c = document.createElement("canvas");
+        const esc = Math.min(1, LADO_MAXIMO / Math.max(m.w, m.h));
+        c.width = Math.round(m.w * esc);
+        c.height = Math.round(m.h * esc);
+        c.getContext("2d").drawImage(video, m.x, m.y, m.w, m.h, 0, 0, c.width, c.height);
+        return c;
+    }
+
+    // Nitidez: variación del borde (Laplaciano) sobre una versión pequeña en grises.
+    function nitidez(canvas) {
+
+        const ancho = 360;
+        const alto = Math.max(1, Math.round(canvas.height * ancho / canvas.width));
+        const c = document.createElement("canvas");
+        c.width = ancho;
+        c.height = alto;
+        const g = c.getContext("2d");
+        g.drawImage(canvas, 0, 0, ancho, alto);
+        const d = g.getImageData(0, 0, ancho, alto).data;
+
+        const gris = new Float32Array(ancho * alto);
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) gris[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+
+        let suma = 0, suma2 = 0, n = 0;
+        for (let yy = 1; yy < alto - 1; yy++) {
+            for (let xx = 1; xx < ancho - 1; xx++) {
+                const k = yy * ancho + xx;
+                const lap = 4 * gris[k] - gris[k - 1] - gris[k + 1] - gris[k - ancho] - gris[k + ancho];
+                suma += lap;
+                suma2 += lap * lap;
+                n++;
+            }
+        }
+        const media = suma / n;
+        return suma2 / n - media * media;
+    }
+
+    // Miniatura 24x32 en grises: sirve para saber si la imagen cambió o está quieta.
+    function firma(fuente, sx, sy, sw, sh) {
+        const c = document.createElement("canvas");
+        c.width = 24;
+        c.height = 32;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        g.drawImage(fuente, sx, sy, sw, sh, 0, 0, 24, 32);
+        const d = g.getImageData(0, 0, 24, 32).data;
+        const f = new Uint8Array(24 * 32);
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) f[j] = (d[i] + d[i + 1] + d[i + 2]) / 3;
+        return f;
+    }
+
+    function diferencia(a, b) {
+        if (!a || !b) return 255;
+        let s = 0;
+        for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
+        return s / a.length;
+    }
+
+    const UMBRAL_NITIDEZ = 35;
+
+    async function capturar(esAuto) {
+
+        if (!cam.abierta) return;
+
+        const c = recortarFotograma();
+        if (!c) return;
+
+        if (cam.verificarNitidez) {
+            const v = nitidez(c);
+            if (v < UMBRAL_NITIDEZ) {
+                if (esAuto) return;   // en automático simplemente espera otra toma
+                cam.pendienteBorrosa = c;
+                mostrarAvisoCamara(
+                    `😵 La foto salió borrosa (nitidez ${Math.round(v)}). Acércate un poco, enciende la linterna o sostén firme y repite. ` +
+                    `<button type="button" class="cam-aviso-btn" id="camUsarIgual">Usar de todos modos</button>`, 6000);
+                const b = $("camUsarIgual");
+                if (b) b.addEventListener("click", () => {
+                    if (cam.pendienteBorrosa) guardarCaptura(cam.pendienteBorrosa);
+                    cam.pendienteBorrosa = null;
+                    ocultarAvisoCamara();
+                });
+                return;
+            }
+        }
+
+        cam.firmaUltima = firma(c, 0, 0, c.width, c.height);
+        guardarCaptura(c);
+    }
+
+    async function guardarCaptura(c) {
+
+        cam.ultimaCaptura = Date.now();
+        cam.capturados++;
+
+        // Destello y vibración de confirmación.
+        const flash = $("camFlash");
+        flash.classList.remove("on");
+        void flash.offsetWidth;
+        flash.classList.add("on");
+        if (navigator.vibrate) navigator.vibrate(60);
+
+        const foto = cam.giro ? rotarCanvas(c, cam.giro) : c;
+
+        // Rehacer: la foto reemplaza a la del recibo elegido y la cámara se cierra.
+        if (cam.reemplazar) {
+            const r = recibos.find(x => x.id === cam.reemplazar);
+            if (r) {
+                const i = await reemplazarImagen(r, foto, "Cámara");
+                r.tira = await tiraMiniatura(r, 60);
+                mostrarAvisoCamara(`<b>#${numeroFormateado(i + 1)}</b> reemplazado<br>${r.tira ? `<img class="tira" src="${r.tira}" alt="Recorte">` : ""}`, 1500);
+                setTimeout(() => cerrarCamara(false), 1300);
+                setStatus($("statusRecibos"), `📷 Recibo ${numeroFormateado(i + 1)} rehecho con una foto nueva.`, "success");
+                return;
+            }
+            cam.reemplazar = null;
+            pintarReemplazo();
+        }
+
+        const numero = recibos.length + 1;
+        await agregarRecibo(foto, `Cámara · recibo ${numero}`);
+        const recibo = recibos[recibos.length - 1];
+        marcarCollagesDesactualizados();
+        actualizarContador();
+
+        if (!ZONAS.some(z => formatoDe(recibo).zonas[z.id])) {
+            mostrarAvisoCamara(`📄 Recibo ${numero} guardado. Cierra la cámara y márcale las zonas en el paso 2.`);
+            return;
+        }
+
+        // Muestra el recorte que quedó, para confirmar que el texto cayó dentro de las zonas.
+        recibo.tira = await tiraMiniatura(recibo, 60);
+        mostrarAvisoCamara(`<b>#${numeroFormateado(numero)}</b> guardado<br><img class="tira" src="${recibo.tira}" alt="Recorte">`, 2500);
+    }
+
+    function actualizarContador() {
+        $("camContador").innerHTML =
+            `📄 ${cam.capturados} en esta sesión · ${recibos.length} en total`;
+    }
+
+    let temporizadorAviso = null;
+
+    function mostrarAvisoCamara(html, ms) {
+        const a = $("camAviso");
+        a.innerHTML = html;
+        a.hidden = false;
+        clearTimeout(temporizadorAviso);
+        temporizadorAviso = setTimeout(ocultarAvisoCamara, ms || 3000);
+    }
+
+    function ocultarAvisoCamara() {
+        $("camAviso").hidden = true;
+    }
+
+    // ---------- Captura automática ----------
+    //
+    // Cada 300 ms compara el recuadro con el anterior. Si no cambia durante
+    // ~1,2 s (celular quieto) y es distinto de la última foto tomada (ya
+    // pusiste otro recibo), toma la foto sola.
+
+    function iniciarAuto() {
+
+        detenerAuto();
+        cam.firmaPrevia = null;
+        cam.quietoDesde = 0;
+
+        cam.timerAuto = setInterval(() => {
+
+            const video = $("camVideo");
+            if (!cam.abierta || !video.videoWidth) return;
+
+            const m = marcoEnVideo();
+            const f = firma(video, m.x, m.y, m.w, m.h);
+            const mov = diferencia(f, cam.firmaPrevia);
+            cam.firmaPrevia = f;
+
+            const quieto = mov < 4;
+            const nuevo = diferencia(f, cam.firmaUltima) > 12;
+
+            if (!quieto) {
+                cam.quietoDesde = 0;
+                dibujarSegmentacion("moviendo");
+                return;
+            }
+
+            if (!cam.quietoDesde) cam.quietoDesde = Date.now();
+            dibujarSegmentacion(nuevo ? "quieto" : undefined);
+
+            if (nuevo && Date.now() - cam.quietoDesde > 1200 && Date.now() - cam.ultimaCaptura > 1500) {
+                cam.quietoDesde = 0;
+                capturar(true);
+            }
+        }, 300);
+    }
+
+    function detenerAuto() {
+        clearInterval(cam.timerAuto);
+        cam.timerAuto = null;
+    }
+
+    // ---------- Foto con la cámara del celular (sin recuadro, funciona sin https) ----------
+
+    $("btnFotoNativa").addEventListener("click", () => $("inputFotoNativa").click());
+
+    $("inputFotoNativa").addEventListener("change", e => {
+        // Reutiliza el mismo proceso de carga de fotos del paso 2.
+        const dt = new DataTransfer();
+        [...e.target.files].forEach(f => dt.items.add(f));
+        e.target.value = "";
+        $("inputRecibos").files = dt.files;
+        $("inputRecibos").dispatchEvent(new Event("change"));
+    });
+
+
+
+    // Inicio: recuperar las capturas guardadas en el dispositivo.
+    (async () => {
+        await recuperarRecibosBD();
+        await mostrarRecibo();
+        renderizarCapturas();
+    })();
+
+</script>
+
+</body>
+</html>
