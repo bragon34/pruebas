@@ -1096,15 +1096,19 @@
     <div class="card">
         <h2><span class="paso">4</span> Collages para tu app de OCR</h2>
         <div class="opciones">
-            <label class="campo">Recibos por collage
+            <label class="campo">Recibos por imagen
                 <select id="optPorCollage">
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="15" selected>15</option>
-                    <option value="20">20</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100000">Todos en una imagen</option>
+                    <option value="0" selected>Automático: lo más posible</option>
+                    <option value="15">Máximo 15</option>
+                    <option value="30">Máximo 30</option>
+                    <option value="50">Máximo 50</option>
+                </select>
+            </label>
+            <label class="campo">Tamaño de cada imagen
+                <select id="optPagina">
+                    <option value="larga" selected>Una sola columna, lo más larga posible</option>
+                    <option value="a4">Hoja vertical en varias columnas (2480×3508)</option>
+                    <option value="a4h">Hoja horizontal en varias columnas (3508×2480)</option>
                 </select>
             </label>
             <label class="campo">Disposición
@@ -1212,7 +1216,7 @@
 
     // Se comparte con la página OCR: si ya marcaste zonas allá, aparecen aquí.
     const CLAVE_PLANTILLA = "ocrRecibos.plantilla";
-    const CLAVE_OPCIONES = "recortes.opciones";
+    const CLAVE_OPCIONES = "recortes.opciones.v3";
     const CLAVE_FORMATOS = "recortes.formatos";
 
     // Lado máximo al guardar cada recibo (px). Alto para que los recortes salgan nítidos.
@@ -1290,7 +1294,7 @@
     })();
 
     // Opciones del collage recordadas en el dispositivo.
-    const OPCIONES = ["optPorCollage", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optSeparar"];
+    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optSeparar"];
 
     try {
         const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
@@ -2583,9 +2587,9 @@
     const ANCHO_NUM = 150;   // columna del número
     const ALTO_CABECERA = 96;
 
-    function dibujarNumero(g, n, x, y, w, h) {
+    function dibujarNumero(g, n, x, y, w, h, tam) {
         g.fillStyle = "#111827";
-        g.font = "bold 56px Arial";
+        g.font = `bold ${tam || 56}px Arial`;
         g.textAlign = "center";
         g.textBaseline = "middle";
         g.fillText(n, x + w / 2, y + h / 2);
@@ -2597,13 +2601,23 @@
     const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
 
     // Límites para que el celular pueda crear la imagen (los navegadores móviles
-    // no permiten lienzos gigantes). Si un collage no cabe, se parte en varias imágenes.
+    // no permiten lienzos gigantes).
     const MAX_ALTO_COLLAGE = 14000;
     const MAX_AREA_COLLAGE = 16000000;
 
+    // Tamaños de imagen: la página se llena columna por columna y, cuando ya no cabe
+    // ningún dato más, se crea la siguiente imagen.
+    const PAGINAS = {
+        a4:    { w: 2480, h: 3508 },   // hoja vertical (A4 a 300 ppp)
+        a4h:   { w: 3508, h: 2480 },   // hoja horizontal
+        larga: null                    // una sola columna, tan alta como se pueda
+    };
+    const MARGEN = 30;          // margen de la página
+    const HUECO_COLUMNAS = 50;  // espacio entre columnas de datos
+
     // lote: [{ recibo, numero }]
-    // info: { indice, total, formato, campo? }  (campo = collage de un solo dato)
-    // Devuelve una lista de collages (normalmente uno; varios si no cabe).
+    // info: { formato, campo? }  (campo = imagen de un solo dato)
+    // Devuelve la lista de imágenes necesarias para que quepan todos los datos.
     async function construirCollage(lote, info, opciones) {
 
         // Solo salen los campos que tienen recuadro en algún recibo del lote (en orden fijo).
@@ -2613,8 +2627,13 @@
         const ficha = opciones.disposicion === "apilado";
         const rotulos = ficha && opciones.rotulos;
 
-        // 1) Recortes escalados al mismo ancho por campo: todas las filas quedan parejas,
-        //    y los recuadros de varias líneas conservan todas sus líneas.
+        // Con un solo dato por imagen se compacta: número más angosto y filas más bajas.
+        const compacto = !!info.campo;
+        const anchoNum = compacto ? 118 : ANCHO_NUM;
+        const pad = compacto ? 8 : PAD;
+        const anchoDe = z => compacto ? Math.round(z.ancho * 0.8) : z.ancho;
+
+        // 1) Recortes escalados al mismo ancho por campo (todas las filas parejas).
         const filas = [];
 
         for (const it of lote) {
@@ -2625,8 +2644,8 @@
             zonasUsadas.forEach(z => {
                 const c = recs[z.id];
                 if (!c) return;
-                const anchoCol = ficha ? ANCHO_FICHA : z.ancho;
-                const esc = Math.min(3, anchoCol / c.width);
+                const anchoCol = ficha ? ANCHO_FICHA : anchoDe(z);
+                const esc = Math.min(compacto ? 2.2 : 3, anchoCol / c.width);
                 const e = document.createElement("canvas");
                 e.width = Math.max(1, Math.round(c.width * esc));
                 e.height = Math.max(1, Math.round(c.height * esc));
@@ -2639,158 +2658,191 @@
 
             let alto;
             if (ficha) {
-                // Cada campo ocupa su propio renglón (aunque falte, deja el rótulo para no descuadrar).
-                alto = zonasUsadas.reduce((s, z) => s + Math.max(celdas[z.id] ? celdas[z.id].height : 0, rotulos ? 44 : 0) + 12, 0) - 12 + 2 * PAD;
+                alto = zonasUsadas.reduce((s, z) => s + Math.max(celdas[z.id] ? celdas[z.id].height : 0, rotulos ? 44 : 0) + 12, 0) - 12 + 2 * pad;
             } else {
-                alto = Math.max(60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * PAD;
+                alto = Math.max(compacto ? 44 : 60, ...zonasUsadas.map(z => celdas[z.id] ? celdas[z.id].height : 0)) + 2 * pad;
             }
 
-            filas.push({ numero: it.numero, archivo: it.recibo.archivo, celdas, alto: Math.max(info.campo ? 80 : 90, alto) });
+            filas.push({ numero: it.numero, archivo: it.recibo.archivo, celdas, alto: Math.max(compacto ? 60 : 90, alto) });
         }
 
-        // 2) Ancho del lienzo.
+        // 2) Ancho de un bloque (número + datos).
         const anchoContenido = ficha
             ? (rotulos ? ANCHO_ROTULO : 0) + ANCHO_FICHA
-            : zonasUsadas.reduce((s, z) => s + z.ancho, 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
+            : zonasUsadas.reduce((s, z) => s + anchoDe(z), 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
+        const anchoBloque = anchoNum + anchoContenido + 2 * pad;
 
-        const W = ANCHO_NUM + anchoContenido + 2 * PAD;
+        // 3) Tamaño de la página y número de columnas que caben.
+        const pagina = PAGINAS[opciones.pagina] || null;
+        let PW, PH, columnas;
 
-        // 3) Partir en varias imágenes si no cabe en una.
-        const altoMax = Math.min(MAX_ALTO_COLLAGE, Math.floor(MAX_AREA_COLLAGE / W));
-        const partes = [];
-        let actual = [], acumulado = ALTO_CABECERA + PAD;
+        if (pagina) {
+            PW = Math.max(pagina.w, anchoBloque + 2 * MARGEN);
+            PH = pagina.h;
+            columnas = Math.max(1, Math.floor((PW - 2 * MARGEN + HUECO_COLUMNAS) / (anchoBloque + HUECO_COLUMNAS)));
+        } else {
+            PW = anchoBloque + 2 * MARGEN;
+            PH = Math.min(MAX_ALTO_COLLAGE, Math.floor(MAX_AREA_COLLAGE / PW));
+            columnas = 1;
+        }
+
+        const inicioFilas = ALTO_CABECERA + 10;
+        const altoUtil = PH - inicioFilas - MARGEN;
+
+        // 4) Llenar: columna por columna; cuando la página se llena, se abre otra.
+        const paginas = [];
+        let pag = { cols: [[]] }, usado = 0;
 
         filas.forEach(f => {
-            if (actual.length && acumulado + f.alto > altoMax) {
-                partes.push(actual);
-                actual = [];
-                acumulado = ALTO_CABECERA + PAD;
+            let col = pag.cols[pag.cols.length - 1];
+            if (col.length && usado + f.alto > altoUtil) {
+                if (pag.cols.length < columnas) {
+                    pag.cols.push([]);
+                } else {
+                    paginas.push(pag);
+                    pag = { cols: [[]] };
+                }
+                col = pag.cols[pag.cols.length - 1];
+                usado = 0;
             }
-            actual.push(f);
-            acumulado += f.alto;
+            col.push(f);
+            usado += f.alto;
         });
-        if (actual.length) partes.push(actual);
+        if (pag.cols[0].length) paginas.push(pag);
 
         const tipo = opciones.formato === "png" ? "image/png" : "image/jpeg";
         const ext = opciones.formato === "png" ? "png" : "jpg";
         const slugDe = t => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         const resultado = [];
 
-        for (let p = 0; p < partes.length; p++) {
+        for (let p = 0; p < paginas.length; p++) {
 
-            const filasParte = partes[p];
-            const H = ALTO_CABECERA + filasParte.reduce((s, f) => s + f.alto, 0) + PAD;
+            const cols = paginas[p].cols;
+            const filasPagina = cols.flat();
+
+            // La última hoja se recorta a lo que realmente ocupa.
+            const altoCols = Math.max(...cols.map(c => c.reduce((s, f) => s + f.alto, 0)));
+            const H = Math.min(PH, inicioFilas + altoCols + MARGEN);
+            const W = pagina ? Math.min(PW, 2 * MARGEN + cols.length * anchoBloque + (cols.length - 1) * HUECO_COLUMNAS) : PW;
+            const Wfinal = pagina && paginas.length > 1 ? PW : W;   // hojas llenas conservan su ancho
 
             const c = document.createElement("canvas");
-            c.width = W;
+            c.width = Wfinal;
             c.height = H;
             const g = c.getContext("2d");
 
             g.fillStyle = "#ffffff";
-            g.fillRect(0, 0, W, H);
+            g.fillRect(0, 0, Wfinal, H);
 
-            // Cabecera.
-            const nums = filasParte.map(f => f.numero);
+            // Título (se achica si no cabe).
+            const nums = filasPagina.map(f => f.numero);
             const titulo =
                 (info.campo ? `${info.campo.rotulo} · ` : "") +
-                `Lote ${info.indice + 1} de ${info.total}` +
-                (partes.length > 1 ? ` (parte ${p + 1} de ${partes.length})` : "") +
+                `Imagen ${p + 1} de ${paginas.length}` +
                 (info.formato ? ` · ${info.formato}` : "") +
-                ` · ${filasParte.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`;
+                ` · ${filasPagina.length} recibos (N° ${numeroFormateado(Math.min(...nums))} a ${numeroFormateado(Math.max(...nums))})`;
 
-            // El título se achica si la imagen es angosta (por ejemplo, la de códigos).
             let tamTitulo = 30;
             g.font = `bold ${tamTitulo}px Arial`;
-            while (tamTitulo > 14 && g.measureText(titulo).width > W - 2 * PAD) {
+            while (tamTitulo > 14 && g.measureText(titulo).width > Wfinal - 2 * MARGEN) {
                 tamTitulo--;
                 g.font = `bold ${tamTitulo}px Arial`;
             }
             g.fillStyle = "#111827";
-            g.fillText(titulo, PAD, 40);
+            g.fillText(titulo, MARGEN, 42);
 
-            g.font = "bold 22px Arial";
-            g.fillStyle = "#475569";
-            g.fillText("N°", PAD + 40, 82);
+            cols.forEach((col, ci) => {
 
-            if (!ficha) {
-                let x = ANCHO_NUM + PAD;
-                zonasUsadas.forEach(z => {
-                    g.fillText(z.rotulo, x, 82);
-                    x += z.ancho + HUECO;
-                });
-            } else {
-                g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), ANCHO_NUM + PAD, 82);
-            }
+                const x0 = MARGEN + ci * (anchoBloque + HUECO_COLUMNAS);
 
-            g.fillStyle = "#111827";
-            g.fillRect(0, ALTO_CABECERA - 4, W, 3);
-
-            // Filas.
-            let y = ALTO_CABECERA;
-
-            filasParte.forEach((f, k) => {
-
-                if (k % 2 === 1) {
-                    g.fillStyle = "#f8fafc";
-                    g.fillRect(0, y, W, f.alto);
-                }
-
-                dibujarNumero(g, numeroFormateado(f.numero), 0, y, ANCHO_NUM, f.alto);
-
-                if (ficha) {
-                    let yy = y + PAD;
+                // Encabezado de la columna.
+                g.font = "bold 22px Arial";
+                g.fillStyle = "#475569";
+                g.fillText("N°", x0 + anchoNum / 2 - 14, 82);
+                if (!ficha) {
+                    let x = x0 + anchoNum + pad;
                     zonasUsadas.forEach(z => {
-                        const e = f.celdas[z.id];
-                        const altoCampo = Math.max(e ? e.height : 0, rotulos ? 44 : 0);
-                        let x = ANCHO_NUM + PAD;
-                        if (rotulos) {
-                            g.fillStyle = "#111827";
-                            g.font = "bold 26px Arial";
-                            g.fillText(z.rotulo + ":", x, yy + Math.min(altoCampo, 60) / 2 + 9);
-                            x += ANCHO_ROTULO;
-                        }
-                        if (e) g.drawImage(e, x, yy);
-                        yy += altoCampo + 12;
+                        g.fillText(z.rotulo, x, 82);
+                        x += anchoDe(z) + HUECO;
                     });
                 } else {
-                    let x = ANCHO_NUM + PAD;
-                    zonasUsadas.forEach(z => {
-                        const e = f.celdas[z.id];
-                        if (e) {
-                            g.drawImage(e, x, y + (info.campo ? (f.alto - e.height) / 2 : PAD));
-                        } else if (info.campo) {
-                            // Recibo sin este dato: se deja la fila marcada para no descuadrar la numeración.
-                            g.fillStyle = "#94a3b8";
-                            g.font = "bold 30px Arial";
-                            g.fillText("—", x, y + f.alto / 2 + 10);
-                        }
-                        x += z.ancho + HUECO;
-                    });
+                    g.fillText(zonasUsadas.map(z => z.rotulo).join(" · "), x0 + anchoNum + pad, 82);
                 }
+                g.fillStyle = "#111827";
+                g.fillRect(x0, ALTO_CABECERA - 4, anchoBloque, 3);
 
-                g.fillStyle = "#94a3b8";
-                g.fillRect(0, y + f.alto - 2, W, 2);
-                y += f.alto;
+                let y = inicioFilas;
+
+                col.forEach((f, k) => {
+
+                    if (k % 2 === 1) {
+                        g.fillStyle = "#f1f5f9";
+                        g.fillRect(x0, y, anchoBloque, f.alto);
+                    }
+
+                    dibujarNumero(g, numeroFormateado(f.numero), x0, y, anchoNum, f.alto, compacto ? 42 : 56);
+
+                    if (ficha) {
+                        let yy = y + pad;
+                        zonasUsadas.forEach(z => {
+                            const e = f.celdas[z.id];
+                            const altoCampo = Math.max(e ? e.height : 0, rotulos ? 44 : 0);
+                            let x = x0 + anchoNum + pad;
+                            if (rotulos) {
+                                g.fillStyle = "#111827";
+                                g.font = "bold 26px Arial";
+                                g.fillText(z.rotulo + ":", x, yy + Math.min(altoCampo, 60) / 2 + 9);
+                                x += ANCHO_ROTULO;
+                            }
+                            if (e) g.drawImage(e, x, yy);
+                            yy += altoCampo + 12;
+                        });
+                    } else {
+                        let x = x0 + anchoNum + pad;
+                        zonasUsadas.forEach(z => {
+                            const e = f.celdas[z.id];
+                            if (e) {
+                                g.drawImage(e, x, y + (compacto ? (f.alto - e.height) / 2 : pad));
+                            } else if (compacto) {
+                                // Recibo sin este dato: la fila queda marcada para no descuadrar la numeración.
+                                g.fillStyle = "#94a3b8";
+                                g.font = "bold 30px Arial";
+                                g.fillText("—", x, y + f.alto / 2 + 10);
+                            }
+                            x += anchoDe(z) + HUECO;
+                        });
+                    }
+
+                    g.fillStyle = "#94a3b8";
+                    g.fillRect(x0, y + f.alto - 2, anchoBloque, 2);
+                    y += f.alto;
+                });
+
+                // Línea tras la columna del número.
+                g.fillStyle = "#cbd5e1";
+                g.fillRect(x0 + anchoNum - 2, ALTO_CABECERA, 2, y - ALTO_CABECERA);
+
+                // Separador grueso entre columnas de datos.
+                if (ci < cols.length - 1) {
+                    g.fillStyle = "#111827";
+                    g.fillRect(x0 + anchoBloque + HUECO_COLUMNAS / 2 - 2, ALTO_CABECERA - 4, 4, H - ALTO_CABECERA - MARGEN / 2);
+                }
             });
-
-            // Línea vertical tras la columna del número.
-            g.fillStyle = "#cbd5e1";
-            g.fillRect(ANCHO_NUM - 2, ALTO_CABECERA, 2, H - ALTO_CABECERA);
 
             const blob = await new Promise(res => c.toBlob(res, tipo, 0.92));
 
             resultado.push({
                 blob,
                 url: URL.createObjectURL(blob),
-                nombre: `collage_${String(info.indice + 1).padStart(2, "0")}` +
+                nombre: (info.campo ? slugDe(info.campo.rotulo) : "recibos") +
                     (info.formato ? "_" + slugDe(info.formato) : "") +
-                    (info.campo ? "_" + slugDe(info.campo.rotulo) : "") +
-                    (partes.length > 1 ? `_parte${p + 1}` : "") + `.${ext}`,
+                    (info.total > 1 ? `_lote${String(info.indice + 1).padStart(2, "0")}` : "") +
+                    `_${String(p + 1).padStart(2, "0")}.${ext}`,
                 numeros: nums,
                 formato: info.formato || "",
                 campo: info.campo ? info.campo.rotulo : "",
-                archivos: filasParte.map(f => f.archivo),
-                ancho: W,
+                archivos: filasPagina.map(f => f.archivo),
+                ancho: Wfinal,
                 alto: H
             });
         }
@@ -2813,7 +2865,8 @@
         }
 
         const opciones = {
-            porCollage: Math.max(1, parseInt($("optPorCollage").value, 10) || 15),
+            porCollage: parseInt($("optPorCollage").value, 10) || Infinity,   // 0 = automático
+            pagina: $("optPagina").value,
             disposicion: $("optDisposicion").value,
             contraste: $("optContraste").checked,
             formato: $("optFormato").value,
@@ -2840,8 +2893,9 @@
 
         const lotes = [];
         grupos.forEach(gr => {
-            for (let i = 0; i < gr.items.length; i += opciones.porCollage) {
-                lotes.push({ formato: gr.formato, items: gr.items.slice(i, i + opciones.porCollage) });
+            const paso = isFinite(opciones.porCollage) ? opciones.porCollage : gr.items.length;
+            for (let i = 0; i < gr.items.length; i += paso) {
+                lotes.push({ formato: gr.formato, items: gr.items.slice(i, i + paso) });
             }
         });
 
@@ -2871,7 +2925,7 @@
                 `✅ ${collages.length} imagen(es) listas con ${recibos.length} recibos` +
                 (porCampo ? " (una por cada dato: código, nombre, dirección, teléfono)" : "") +
                 (grupos.length > 1 ? `, separadas en ${grupos.length} formatos` : "") +
-                (collages.some(c => /_parte\d/.test(c.nombre)) ? ". Algunas se partieron en varias imágenes porque no cabían en una sola" : "") +
+                ". Cada imagen se llena al máximo antes de pasar a la siguiente" +
                 ".", "success");
         } catch (err) {
             setStatus($("statusCollages"), "❌ No se pudieron armar los collages: " + err.message, "error");
