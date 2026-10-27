@@ -986,6 +986,59 @@
         color: #64748b;
     }
 
+    /* Las listas de opciones largas no deben ensanchar la página en el celular. */
+    .opciones label.campo {
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
+    .opciones select {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    /* En el celular los botones de cada captura bajan a otra línea en vez de quedar cortados. */
+    @media (max-width: 600px) {
+        .captura {
+            flex-wrap: wrap;
+        }
+
+        .captura-cuerpo {
+            flex: 1 1 calc(100% - 60px);
+        }
+
+        .captura-acciones {
+            flex: 1 1 100%;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+    }
+
+    /* ---------- Método por casillas de tabla ---------- */
+
+    .metodo-barra {
+        background: #ecfeff;
+    }
+
+    .metodo-barra .herr.on {
+        background: #0891b2;
+    }
+
+    .info-tabla {
+        background: #ecfeff;
+        border: 1px solid #a5f3fc;
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #155e75;
+        line-height: 1.45;
+    }
+
+    .aviso-tabla {
+        color: #b45309;
+        font-weight: bold;
+    }
+
     .cam-aviso .tira {
         margin: 6px auto 0;
         max-height: 60px;
@@ -999,7 +1052,7 @@
 <div class="app">
 
     <div class="card">
-        <h1>✂️ Recortes de Recibos → Collages</h1>
+        <h1>✂️ Recortes de Recibos → Collages <small style="font-size:13px;color:#94a3b8">v2.0</small></h1>
         <p class="sub">
             Captura los recibos con el recuadro guía. La página recorta <strong>exactamente</strong> las zonas que marcaste
             (código, nombre, dirección, teléfono) y las une en collages numerados de 15 recibos por imagen, con todos los recortes del
@@ -1045,6 +1098,15 @@
                     <button type="button" class="btn-mini" id="btnRenombrarFormato">🏷️ Renombrar</button>
                     <button type="button" class="btn-mini" id="btnBorrarFormato">🗑️ Borrar formato</button>
                 </div>
+                <div class="formato-barra metodo-barra">
+                    <span class="campo">🎯 Método de recorte</span>
+                    <div class="grupo-herr">
+                        <button type="button" class="herr" data-metodo="recuadros" title="Recuadros fijos que tú dibujas sobre el recibo">▭ Recuadros</button>
+                        <button type="button" class="herr" data-metodo="tabla" title="La página busca sola las casillas de la tabla impresa en cada recibo">▦ Casillas de la tabla</button>
+                    </div>
+                    <button type="button" class="btn-mini" id="btnDetectar" hidden title="Buscar otra vez las casillas en este recibo">🔄 Detectar de nuevo</button>
+                    <button type="button" class="btn-mini" id="btnModeloTabla" hidden title="Las casillas elegidas en este recibo pasan a ser el modelo del formato">📌 Este recibo como modelo</button>
+                </div>
                 <div class="editor-barra">
                     <div class="grupo-herr">
                         <button type="button" class="herr" data-modo="dibujar" title="Arrastra para dibujar la zona seleccionada">✏️ Dibujar</button>
@@ -1056,6 +1118,7 @@
                         <span class="zoom-texto" id="zoomTexto">—</span>
                         <button type="button" class="herr" id="btnZoomMas" title="Acercar">+</button>
                         <button type="button" class="herr" id="btnZoomAjustar" title="Ver el recibo completo">⤢ Ver todo</button>
+                        <button type="button" class="herr" id="btnLupa" title="Lupa de aumento mientras dibujas o ajustas">🔍 Lupa</button>
                     </div>
                 </div>
                 <div class="lienzo-wrap">
@@ -1064,7 +1127,10 @@
                 <p class="nota" style="margin-top:6px">
                     Zoom: pellizca con dos dedos (o rueda del mouse). Con dos dedos también mueves la imagen.
                     En <b>✥ Ajustar</b>, arrastra la zona para moverla o sus cuadritos para cambiar el tamaño.
+                    Mientras arrastras aparece una <b>🔍 lupa</b> en la esquina contraria para ver el borde exacto.
+                    Con <b>▦ Casillas de la tabla</b>: elige un dato a la derecha y toca su casilla en el recibo.
                 </p>
+                <div id="avisoTabla" class="nota"></div>
                 <div class="nav-recibo" style="margin-top:8px">
                     <button class="btn-mini" id="btnAnterior">◀ Anterior</button>
                     <span id="textoRecibo">—</span>
@@ -1272,7 +1338,7 @@
     }
 
     function hayAlgunaZona() {
-        return formatos.some(f => ZONAS.some(z => f.zonas[z.id])) || recibos.some(r => r.zonas);
+        return formatos.some(f => formatoTieneCampos(f)) || recibos.some(r => r.zonas || (r.celdasPropias && Object.keys(r.celdasPropias).length));
     }
 
     (function cargarFormatos() {
@@ -1375,7 +1441,9 @@
                 ancho: r.ancho,
                 alto: r.alto,
                 zonas: r.zonas || null,
-                formato: r.formato
+                formato: r.formato,
+                det: r.det || null,
+                celdasPropias: r.celdasPropias || null
             }));
         } catch (err) {
             if (!avisoGuardadoMostrado) {
@@ -1555,6 +1623,7 @@
     }
 
     function renderizarBotonesZona() {
+        if (metodoTablaVista()) { renderizarBotonesTabla(); return; }
         const zonas = zonasDe(recibos[indiceVista]);
         $("zonaBotones").innerHTML = ZONAS.map(z => `
             <button type="button" class="zona-btn${zonaActiva === z.id ? " activa" : ""}" style="--c:${z.color}" data-zona="${z.id}">
@@ -1699,7 +1768,7 @@
     }
 
     function irAZonaActiva() {
-        const z = zonasDe(recibos[indiceVista])[zonaActiva];
+        const z = metodoTablaVista() ? cajaTablaEnImagen(zonaActiva) : zonasDe(recibos[indiceVista])[zonaActiva];
         if (!z || !imagenVista) return;
         const { w, h } = tamanoLienzo();
         const zw = z.w * imagenVista.width, zh = z.h * imagenVista.height;
@@ -1739,7 +1808,17 @@
             : "—";
 
         $("pruebaLectura").textContent = "";
+        $("avisoTabla").textContent = "";
+
+        // Método por casillas: buscar la tabla de este recibo antes de dibujar.
+        if (r && formatoDe(r).metodo === "tabla") {
+            $("avisoTabla").textContent = "▦ Buscando las casillas de la tabla…";
+            try { await camposTablaDe(r); $("avisoTabla").textContent = ""; }
+            catch (err) { $("avisoTabla").textContent = "❌ No se pudieron buscar las casillas: " + err.message; }
+        }
+
         renderizarFormatos();
+        pintarMetodo();
         ajustarVista();
         renderizarBotonesZona();
         dibujarLienzo();
@@ -1775,8 +1854,25 @@
             return;
         }
 
-        ctx.imageSmoothingEnabled = vista.esc < 2;
-        ctx.drawImage(imagenVista, vista.ox, vista.oy, imagenVista.width * vista.esc, imagenVista.height * vista.esc);
+        dibujarCapas(ctx, 1, true);
+
+        // Lupa: solo mientras se dibuja, se ajusta o se elige una casilla.
+        if (lupaActiva && accion && (accion.tipo === "dibujar" || accion.tipo === "ajustar" || accion.tipo === "tocar")) {
+            dibujarLupa(w, h);
+        }
+    }
+
+    // Dibuja la imagen y todo lo que va encima, en coordenadas de pantalla.
+    // k: aumento actual (1 normal, 3 en la lupa) para que los trazos no engorden.
+    function dibujarCapas(g, k, conEtiquetas) {
+
+        g.imageSmoothingEnabled = vista.esc * k < 2;
+        g.drawImage(imagenVista, vista.ox, vista.oy, imagenVista.width * vista.esc, imagenVista.height * vista.esc);
+
+        if (metodoTablaVista()) {
+            dibujarCeldasTabla(g, k, conEtiquetas);
+            return;
+        }
 
         const zonas = zonasDe(recibos[indiceVista]);
 
@@ -1786,30 +1882,33 @@
             const p = aPantalla(r);
             const activa = zonaActiva === z.id;
 
-            ctx.fillStyle = z.color + (activa ? "22" : "14");
-            ctx.fillRect(p.x, p.y, p.w, p.h);
-            ctx.lineWidth = activa ? 2.5 : 1.5;
-            ctx.strokeStyle = z.color;
-            ctx.strokeRect(p.x, p.y, p.w, p.h);
+            g.fillStyle = z.color + (activa ? "22" : "14");
+            g.fillRect(p.x, p.y, p.w, p.h);
+            g.lineWidth = (activa ? 2.5 : 1.5) / k;
+            g.strokeStyle = z.color;
+            g.strokeRect(p.x, p.y, p.w, p.h);
 
-            ctx.font = "bold 13px Arial";
-            const etiqueta = z.nombre;
-            const tw = ctx.measureText(etiqueta).width + 10;
-            ctx.fillStyle = z.color;
-            ctx.fillRect(p.x, p.y - 20, tw, 20);
-            ctx.fillStyle = "white";
-            ctx.fillText(etiqueta, p.x + 5, p.y - 6);
+            if (conEtiquetas) {
+                g.font = "bold 13px Arial";
+                const etiqueta = z.nombre;
+                const tw = g.measureText(etiqueta).width + 10;
+                g.fillStyle = z.color;
+                g.fillRect(p.x, p.y - 20, tw, 20);
+                g.fillStyle = "white";
+                g.fillText(etiqueta, p.x + 5, p.y - 6);
+            }
 
             // Manijas para ajustar (solo en la zona seleccionada).
             if (activa && modoEditor === "ajustar") {
+                const m = MANIJA / k;
                 Object.values(manijasDe(p)).forEach(([mx, my]) => {
-                    ctx.fillStyle = "white";
-                    ctx.strokeStyle = z.color;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.rect(mx - MANIJA / 2 - 1, my - MANIJA / 2 - 1, MANIJA + 2, MANIJA + 2);
-                    ctx.fill();
-                    ctx.stroke();
+                    g.fillStyle = "white";
+                    g.strokeStyle = z.color;
+                    g.lineWidth = 2 / k;
+                    g.beginPath();
+                    g.rect(mx - m / 2 - 1 / k, my - m / 2 - 1 / k, m + 2 / k, m + 2 / k);
+                    g.fill();
+                    g.stroke();
                 });
             }
         });
@@ -1817,19 +1916,188 @@
         // Rectángulo que se está dibujando.
         if (accion && accion.tipo === "dibujar") {
             const z = ZONAS.find(z => z.id === zonaActiva);
-            ctx.setLineDash([7, 5]);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = z.color;
-            ctx.strokeRect(accion.x0, accion.y0, accion.x1 - accion.x0, accion.y1 - accion.y0);
-            ctx.setLineDash([]);
+            g.setLineDash([7 / k, 5 / k]);
+            g.lineWidth = 2 / k;
+            g.strokeStyle = z.color;
+            g.strokeRect(accion.x0, accion.y0, accion.x1 - accion.x0, accion.y1 - accion.y0);
+            g.setLineDash([]);
         }
+    }
+
+    // ---------- Lupa de aumento ----------
+    //
+    // Círculo con la imagen ampliada 3 veces alrededor del punto que estás
+    // editando (la esquina o borde que arrastras, o la punta del dedo). Se
+    // ubica en la esquina contraria al dedo para que la mano no la tape.
+
+    let lupaActiva = (() => { try { return localStorage.getItem("recortes.lupa") !== "0"; } catch (e) { return true; } })();
+    const AUMENTO_LUPA = 3;
+
+    function pintarLupaBtn() {
+        $("btnLupa").classList.toggle("on", lupaActiva);
+    }
+
+    $("btnLupa").addEventListener("click", () => {
+        lupaActiva = !lupaActiva;
+        try { localStorage.setItem("recortes.lupa", lupaActiva ? "1" : "0"); } catch (e) { /* sin almacenamiento */ }
+        pintarLupaBtn();
+    });
+
+    pintarLupaBtn();
+
+    // Punto que se amplía: el borde/esquina que se arrastra, o el dedo.
+    function focoLupa() {
+        if (!accion) return null;
+        if (accion.tipo === "dibujar" || accion.tipo === "tocar") return { x: accion.x1, y: accion.y1, dedo: { x: accion.x1, y: accion.y1 } };
+        if (accion.tipo === "ajustar") {
+            const dedo = accion.p || { x: 0, y: 0 };
+            const z = zonasEditables()[zonaActiva];
+            if (z && accion.parte && accion.parte !== "centro") {
+                const [mx, my] = manijasDe(aPantalla(z))[accion.parte];
+                return { x: mx, y: my, dedo };
+            }
+            return { x: dedo.x, y: dedo.y, dedo };
+        }
+        return null;
+    }
+
+    function dibujarLupa(w, h) {
+
+        const f = focoLupa();
+        if (!f) return;
+
+        const R = Math.max(50, Math.min(85, Math.min(w, h) * 0.2));
+        const sep = 12;
+
+        // Cuadrante contrario al dedo.
+        const cx = f.dedo.x > w / 2 ? sep + R : w - sep - R;
+        const cy = f.dedo.y > h / 2 ? sep + R : h - sep - R;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = "#0f172a";
+        ctx.fill();
+        ctx.clip();
+
+        ctx.translate(cx, cy);
+        ctx.scale(AUMENTO_LUPA, AUMENTO_LUPA);
+        ctx.translate(-f.x, -f.y);
+        dibujarCapas(ctx, AUMENTO_LUPA, false);
+        ctx.restore();
+
+        // Mira en el centro: marca el punto exacto.
+        const z = ZONAS.find(z => z.id === zonaActiva);
+        const color = z ? z.color : "#22d3ee";
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "white";
+        [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => {
+            ctx.beginPath();
+            ctx.moveTo(cx + dx * 5, cy + dy * 5);
+            ctx.lineTo(cx + dx * 16, cy + dy * 16);
+            ctx.stroke();
+        });
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy);
+        ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16);
+        ctx.stroke();
+
+        // Borde del círculo.
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "white";
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.beginPath();
+        ctx.arc(cx, cy, R + 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // Casillas detectadas (método tabla) dibujadas sobre el recibo.
+    function dibujarCeldasTabla(g, k, conEtiquetas) {
+
+        const r = recibos[indiceVista];
+        if (!r || !r.det) return;
+
+        const det = r.det;
+        const ct = r._ct;
+        const poligono = caja => caja4Pantalla(caja, det);
+
+        // Todas las casillas encontradas.
+        g.lineWidth = 1.5 / k;
+        g.strokeStyle = "#22d3ee";
+        g.setLineDash([6 / k, 4 / k]);
+        det.celdas.forEach(c => {
+            const p = poligono(c);
+            g.beginPath();
+            p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+            g.closePath();
+            g.stroke();
+        });
+        g.setLineDash([]);
+
+        // Casillas asignadas a cada dato.
+        ZONAS.forEach(z => {
+            const activa = zonaActiva === z.id;
+            const fr = ct && ct.campos[z.id];
+            if (fr) {
+                const p = poligono({ x: fr.x * det.w, y: fr.y * det.h, w: fr.w * det.w, h: fr.h * det.h });
+                g.fillStyle = z.color + (activa ? "40" : "26");
+                g.beginPath();
+                p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+                g.closePath();
+                g.fill();
+                g.lineWidth = (activa ? 3 : 2) / k;
+                g.strokeStyle = z.color;
+                g.stroke();
+                if (conEtiquetas) {
+                    const [lx, ly] = p[0];
+                    g.font = "bold 13px Arial";
+                    const etiqueta = z.nombre + (ct.origen[z.id] === "propia" ? " ✂️" : "");
+                    const tw = g.measureText(etiqueta).width + 10;
+                    g.fillStyle = z.color;
+                    g.fillRect(lx, ly - 20, tw, 20);
+                    g.fillStyle = "white";
+                    g.fillText(etiqueta, lx + 5, ly - 6);
+                }
+                return;
+            }
+            // Sin casilla: se muestra el recuadro de respaldo, si existe.
+            const zr = zonasDe(r)[z.id];
+            if (zr && tieneCampo(r, z.id)) {
+                const q = aPantalla(zr);
+                g.setLineDash([3 / k, 3 / k]);
+                g.lineWidth = 1.5 / k;
+                g.strokeStyle = z.color;
+                g.strokeRect(q.x, q.y, q.w, q.h);
+                g.setLineDash([]);
+                if (conEtiquetas) {
+                    g.font = "bold 12px Arial";
+                    g.fillStyle = z.color;
+                    g.fillText(z.nombre + " (recuadro de respaldo)", q.x + 3, q.y - 5);
+                }
+            }
+        });
     }
 
     // ---------- Herramientas y zoom (botones) ----------
 
     function pintarModo() {
+        const tabla = metodoTablaVista();
+        // En el método por casillas no hay recuadros que ajustar: se toca la casilla.
+        if (tabla && modoEditor === "ajustar") modoEditor = "dibujar";
         document.querySelectorAll("[data-modo]").forEach(b => b.classList.toggle("on", b.getAttribute("data-modo") === modoEditor));
-        lienzo.style.cursor = modoEditor === "mover" ? "grab" : modoEditor === "ajustar" ? "default" : "crosshair";
+        const bDibujar = document.querySelector('[data-modo="dibujar"]');
+        const bAjustar = document.querySelector('[data-modo="ajustar"]');
+        bDibujar.textContent = tabla ? "👆 Elegir casilla" : "✏️ Dibujar";
+        bDibujar.title = tabla ? "Toca la casilla del dato seleccionado" : "Arrastra para dibujar la zona seleccionada";
+        bAjustar.hidden = tabla;
+        lienzo.style.cursor = modoEditor === "mover" ? "grab" : modoEditor === "ajustar" ? "default" : tabla ? "pointer" : "crosshair";
     }
 
     document.querySelectorAll("[data-modo]").forEach(b => b.addEventListener("click", () => {
@@ -1909,12 +2177,19 @@
             return;
         }
 
+        // Método por casillas: tocar (o arrastrar con la lupa y soltar) sobre una casilla la asigna.
+        if (metodoTablaVista()) {
+            accion = { tipo: "tocar", x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+            dibujarLienzo();
+            return;
+        }
+
         if (modoEditor === "ajustar") {
             const t = tocarZona(p);
             if (t) {
                 if (t.id !== zonaActiva) { zonaActiva = t.id; renderizarBotonesZona(); }
                 const z = zonasEditables()[t.id] || zonasDe(recibos[indiceVista])[t.id];
-                accion = { tipo: "ajustar", parte: t.parte, inicio: aImagen(p.x, p.y), original: { ...z } };
+                accion = { tipo: "ajustar", parte: t.parte, inicio: aImagen(p.x, p.y), original: { ...z }, p };
             } else {
                 accion = { tipo: "pan", x: p.x, y: p.y };
             }
@@ -1924,6 +2199,7 @@
 
         // Dibujar un rectángulo nuevo para la zona seleccionada.
         accion = { tipo: "dibujar", x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        dibujarLienzo();
     });
 
     lienzo.addEventListener("pointermove", e => {
@@ -1957,7 +2233,7 @@
             return;
         }
 
-        if (accion.tipo === "dibujar") {
+        if (accion.tipo === "dibujar" || accion.tipo === "tocar") {
             accion.x1 = p.x;
             accion.y1 = p.y;
             dibujarLienzo();
@@ -1965,6 +2241,8 @@
         }
 
         if (accion.tipo === "ajustar") {
+
+            accion.p = p;
 
             const actual = aImagen(p.x, p.y);
             const dx = actual.x - accion.inicio.x, dy = actual.y - accion.inicio.y;
@@ -2037,6 +2315,14 @@
             accion = null;
             confirmarCambioZona();
             dibujarLienzo();
+            return;
+        }
+
+        if (accion.tipo === "tocar") {
+            const { x1, y1 } = accion;
+            accion = null;
+            dibujarLienzo();
+            asignarCasillaEn(x1, y1);
             return;
         }
 
@@ -2113,7 +2399,7 @@
     function renderizarFormatos() {
 
         const opciones = formatos.map(f =>
-            `<option value="${f.id}">${escapeHTML(f.nombre)}${ZONAS.some(z => f.zonas[z.id]) ? "" : " (sin zonas)"}</option>`).join("");
+            `<option value="${f.id}">${escapeHTML(f.nombre)}${f.metodo === "tabla" ? " ▦" : ""}${formatoTieneCampos(f) ? "" : " (sin zonas)"}</option>`).join("");
 
         $("selFormato").innerHTML = opciones;
         $("selFormato").value = String(formatoActivoId);
@@ -2145,6 +2431,8 @@
         r.formato = +$("selFormatoRecibo").value;
         r.zonas = null;
         r.tira = null;
+        r.celdasPropias = null;
+        r._ct = null;
         await guardarReciboBD(r);
         marcarCollagesDesactualizados();
         await mostrarRecibo();
@@ -2171,6 +2459,8 @@
             r.formato = f.id;
             r.zonas = null;
             r.tira = null;
+            r.celdasPropias = null;
+            r._ct = null;
             await guardarReciboBD(r);
         }
 
@@ -2212,6 +2502,8 @@
             r.formato = otro.id;
             r.zonas = null;
             r.tira = null;
+            r.celdasPropias = null;
+            r._ct = null;
             await guardarReciboBD(r);
         }
 
@@ -2222,6 +2514,683 @@
     });
 
 
+
+    // ==========================================================
+    // MÉTODO 2: CASILLAS DE LA TABLA (detección automática)
+    // ==========================================================
+    //
+    // En lugar de recuadros fijos, la página busca en cada foto la tabla impresa
+    // del recibo: endereza la foto, encuentra las líneas horizontales y verticales,
+    // arma las casillas y saca solo las que elegiste (nombre, código, dirección…).
+    //
+    // Configuración (una vez por formato): eliges un dato a la derecha y tocas su
+    // casilla en un recibo. Ese recibo queda como "modelo": se guarda la forma de
+    // toda su tabla. En los demás recibos se busca la misma tabla (aunque la foto
+    // esté corrida, más cerca o más lejos) y se toma la casilla equivalente.
+    //
+    // Si en algún recibo no se encuentra la casilla, se usa el recuadro manual del
+    // formato como respaldo (si existe) y el recibo queda marcado con ⚠️.
+
+    const LADO_DETECCION = 1600;   // la detección trabaja sobre una copia de este tamaño
+
+    function metodoTablaVista() {
+        const r = recibos[indiceVista];
+        return (r ? formatoDe(r) : formatoActivo()).metodo === "tabla";
+    }
+
+    // ¿Este recibo tiene el dato `id` para exportar?
+    function tieneCampo(recibo, id) {
+        const f = formatoDe(recibo);
+        if (f.metodo === "tabla") {
+            return !!(f.tabla && f.tabla.campos && f.tabla.campos[id]) ||
+                !!(recibo && recibo.celdasPropias && recibo.celdasPropias[id]) ||
+                !!zonasDe(recibo)[id];
+        }
+        return !!zonasDe(recibo)[id];
+    }
+
+    function formatoTieneCampos(f) {
+        if (f.metodo === "tabla" && f.tabla && Object.keys(f.tabla.campos || {}).length) return true;
+        return ZONAS.some(z => f.zonas[z.id]);
+    }
+
+    // ---------- Imagen ----------
+
+    function grisDe(c) {
+        const d = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data;
+        const g = new Uint8Array(c.width * c.height);
+        for (let i = 0, j = 0; i < d.length; i += 4, j++) g[j] = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+        return g;
+    }
+
+    // Umbral adaptativo (Bradley): tinta = más oscuro que su vecindario.
+    // Aguanta sombras y luz dispareja de las fotos tomadas con el celular.
+    function binarizarAdaptativo(gris, w, h) {
+        const integ = new Float64Array((w + 1) * (h + 1));
+        for (let y = 0; y < h; y++) {
+            let fila = 0;
+            for (let x = 0; x < w; x++) {
+                fila += gris[y * w + x];
+                integ[(y + 1) * (w + 1) + x + 1] = integ[y * (w + 1) + x + 1] + fila;
+            }
+        }
+        const rad = Math.max(8, Math.round(Math.min(w, h) / 40));
+        const t = 0.15;
+        const tinta = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) {
+            const y0 = Math.max(0, y - rad), y1 = Math.min(h - 1, y + rad);
+            for (let x = 0; x < w; x++) {
+                const x0 = Math.max(0, x - rad), x1 = Math.min(w - 1, x + rad);
+                const n = (x1 - x0 + 1) * (y1 - y0 + 1);
+                const suma = integ[(y1 + 1) * (w + 1) + x1 + 1] - integ[y0 * (w + 1) + x1 + 1] -
+                    integ[(y1 + 1) * (w + 1) + x0] + integ[y0 * (w + 1) + x0];
+                if (gris[y * w + x] * n < suma * (1 - t)) tinta[y * w + x] = 1;
+            }
+        }
+        return tinta;
+    }
+
+    // Inclinación del texto y las líneas (grados). Prueba ángulos y se queda con
+    // el que deja los renglones más "apretados" (proyección más marcada).
+    function estimarInclinacion(tinta, w, h) {
+        const xs = [], ys = [];
+        const paso = Math.max(1, Math.round(Math.sqrt((w * h) / 400000)));
+        for (let y = 0; y < h; y += paso) {
+            for (let x = 0; x < w; x += paso) {
+                if (tinta[y * w + x]) { xs.push(x - w / 2); ys.push(y - h / 2); }
+            }
+        }
+        if (xs.length < 200) return 0;
+
+        // Bandas del mismo ancho que el muestreo (si no, el ángulo 0° gana por aliasing).
+        const largo = Math.ceil(Math.hypot(w, h) / paso) + 4;
+        const hist = new Uint32Array(largo);
+        const puntaje = grados => {
+            const a = grados * Math.PI / 180, s = Math.sin(a), c = Math.cos(a);
+            hist.fill(0);
+            for (let i = 0; i < xs.length; i++) hist[((-xs[i] * s + ys[i] * c) / paso + largo / 2) | 0]++;
+            let t = 0;
+            for (let i = 0; i < largo; i++) t += hist[i] * hist[i];
+            return t;
+        };
+
+        let mejor = 0, mejorP = -1;
+        for (let a = -12; a <= 12.001; a += 0.5) {
+            const p = puntaje(a);
+            if (p > mejorP) { mejorP = p; mejor = a; }
+        }
+        const base = mejor;
+        for (let a = base - 0.5; a <= base + 0.501; a += 0.1) {
+            const p = puntaje(a);
+            if (p > mejorP) { mejorP = p; mejor = a; }
+        }
+        return Math.round(mejor * 10) / 10;
+    }
+
+    // Gira la imagen -ang grados alrededor del centro (mismo tamaño, fondo blanco).
+    function enderezarImagen(fuente, ang) {
+        if (!ang || Math.abs(ang) < 0.05) return fuente;
+        const c = document.createElement("canvas");
+        c.width = fuente.width;
+        c.height = fuente.height;
+        const g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.translate(c.width / 2, c.height / 2);
+        g.rotate(-ang * Math.PI / 180);
+        g.imageSmoothingQuality = "high";
+        g.drawImage(fuente, -c.width / 2, -c.height / 2);
+        return c;
+    }
+
+    // Máscara con solo las líneas largas de la tabla (horizontales y verticales).
+    function mascaraRejilla(tinta, w, h) {
+
+        const rejilla = new Uint8Array(w * h);
+        const Lh = Math.max(25, Math.round(w / 22));
+        const Lv = Math.max(14, Math.round(Math.min(w, h) / 70));
+        const HUECO_H = 3, HUECO_V = 2, EXTENDER = 4;
+
+        // Horizontales (toleran cortes pequeños).
+        for (let y = 0; y < h; y++) {
+            let x = 0;
+            while (x < w) {
+                if (!tinta[y * w + x]) { x++; continue; }
+                const ini = x;
+                let ult = x;
+                while (x < w && (tinta[y * w + x] || x - ult <= HUECO_H)) { if (tinta[y * w + x]) ult = x; x++; }
+                if (ult - ini + 1 >= Lh) {
+                    const a = Math.max(0, ini - EXTENDER), b = Math.min(w - 1, ult + EXTENDER);
+                    rejilla.fill(1, y * w + a, y * w + b + 1);
+                }
+                x = ult + 1;
+            }
+        }
+
+        // Verticales.
+        for (let x = 0; x < w; x++) {
+            let y = 0;
+            while (y < h) {
+                if (!tinta[y * w + x]) { y++; continue; }
+                const ini = y;
+                let ult = y;
+                while (y < h && (tinta[y * w + x] || y - ult <= HUECO_V)) { if (tinta[y * w + x]) ult = y; y++; }
+                if (ult - ini + 1 >= Lv) {
+                    const a = Math.max(0, ini - EXTENDER), b = Math.min(h - 1, ult + EXTENDER);
+                    for (let k = a; k <= b; k++) rejilla[k * w + x] = 1;
+                }
+                y = ult + 1;
+            }
+        }
+
+        // Engrosar 1 px para cerrar esquinas y cortes.
+        const tmp = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = y * w + x;
+                tmp[i] = rejilla[i] || (x > 0 && rejilla[i - 1]) || (x < w - 1 && rejilla[i + 1]) ? 1 : 0;
+            }
+        }
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const i = y * w + x;
+                rejilla[i] = tmp[i] || (y > 0 && tmp[i - w]) || (y < h - 1 && tmp[i + w]) ? 1 : 0;
+            }
+        }
+        return rejilla;
+    }
+
+    // Casillas = huecos cerrados por las líneas (no tocan el borde de la foto,
+    // tienen forma de rectángulo y son claros como el papel).
+    function celdasDe(rejilla, gris, tinta, w, h) {
+
+        // Brillo del papel (percentil 90).
+        const hist = new Uint32Array(256);
+        for (let i = 0; i < gris.length; i++) hist[gris[i]]++;
+        let acum = 0, papel = 255;
+        for (let v = 0; v < 256; v++) { acum += hist[v]; if (acum >= gris.length * 0.9) { papel = v; break; } }
+
+        const etiqueta = new Int32Array(w * h);
+        const pila = new Int32Array(w * h);
+        const celdas = [];
+        let n = 0;
+        const areaMin = Math.max(300, w * h * 0.0006);
+
+        for (let inicio = 0; inicio < w * h; inicio++) {
+
+            if (rejilla[inicio] || etiqueta[inicio]) continue;
+
+            n++;
+            let tope = 0;
+            pila[tope++] = inicio;
+            etiqueta[inicio] = n;
+            let x0 = w, x1 = 0, y0 = h, y1 = 0, area = 0, sumaGris = 0, sumaTinta = 0, borde = false;
+
+            while (tope) {
+                const i = pila[--tope];
+                const x = i % w, y = (i - x) / w;
+                area++;
+                sumaGris += gris[i];
+                sumaTinta += tinta[i];
+                if (x < x0) x0 = x;
+                if (x > x1) x1 = x;
+                if (y < y0) y0 = y;
+                if (y > y1) y1 = y;
+                if (x === 0 || y === 0 || x === w - 1 || y === h - 1) borde = true;
+                if (x > 0 && !rejilla[i - 1] && !etiqueta[i - 1]) { etiqueta[i - 1] = n; pila[tope++] = i - 1; }
+                if (x < w - 1 && !rejilla[i + 1] && !etiqueta[i + 1]) { etiqueta[i + 1] = n; pila[tope++] = i + 1; }
+                if (y > 0 && !rejilla[i - w] && !etiqueta[i - w]) { etiqueta[i - w] = n; pila[tope++] = i - w; }
+                if (y < h - 1 && !rejilla[i + w] && !etiqueta[i + w]) { etiqueta[i + w] = n; pila[tope++] = i + w; }
+            }
+
+            if (borde || area < areaMin) continue;
+            const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+            if (bw < 25 || bh < 12) continue;
+            if (bw * bh > w * h * 0.5) continue;
+            if (area / (bw * bh) < 0.6) continue;                // no es un rectángulo
+            if (sumaGris / area < papel * 0.6) continue;         // muy oscuro: no es papel
+            if (sumaTinta / area > 0.35) continue;                // ruido (madera, tela…)
+
+            celdas.push({ x: x0, y: y0, w: bw, h: bh });
+        }
+
+        celdas.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+        return celdas;
+    }
+
+    // Detección completa sobre una imagen.
+    function detectarTabla(fuente) {
+
+        const esc = Math.min(1, LADO_DETECCION / Math.max(fuente.width, fuente.height));
+        const w = Math.max(1, Math.round(fuente.width * esc));
+        const h = Math.max(1, Math.round(fuente.height * esc));
+
+        let c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        g.imageSmoothingQuality = "high";
+        g.drawImage(fuente, 0, 0, w, h);
+
+        let gris = grisDe(c);
+        let tinta = binarizarAdaptativo(gris, w, h);
+        const ang = estimarInclinacion(tinta, w, h);
+
+        if (Math.abs(ang) >= 0.05) {
+            c = enderezarImagen(c, ang);
+            gris = grisDe(c);
+            tinta = binarizarAdaptativo(gris, w, h);
+        }
+
+        const rejilla = mascaraRejilla(tinta, w, h);
+        return { ang, w, h, celdas: celdasDe(rejilla, gris, tinta, w, h) };
+    }
+
+    // ---------- Emparejar con el modelo ----------
+
+    function iou(a, b) {
+        const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+        const iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+        const inter = ix * iy;
+        return inter ? inter / (a.w * a.h + b.w * b.h - inter) : 0;
+    }
+
+    function transformarCaja(b, t) {
+        return { x: b.x * t.sx + t.tx, y: b.y * t.sy + t.ty, w: b.w * t.sx, h: b.h * t.sy };
+    }
+
+    // Recta por mínimos cuadrados: destino = m * origen + b.
+    function ajusteLineal(pares) {
+        const n = pares.length;
+        let sx = 0, sy = 0, sxx = 0, sxy = 0;
+        pares.forEach(([a, b]) => { sx += a; sy += b; sxx += a * a; sxy += a * b; });
+        const den = n * sxx - sx * sx;
+        if (n < 2 || Math.abs(den) < 1e-6 || den / (n * n) < 400) return null;   // puntos muy juntos
+        const m = (n * sxy - sx * sy) / den;
+        return { m, b: (sy - m * sx) / n };
+    }
+
+    // Busca dónde quedó la tabla del modelo en las casillas de otro recibo
+    // (cambio de escala y de posición). Devuelve la mejor transformación.
+    function emparejarTabla(modelo, celdas) {
+
+        const T = modelo.slice(0, 50), N = celdas.slice(0, 80);
+        let mejor = null;
+
+        for (const t of T) {
+            for (const n of N) {
+                const ra = t.w / t.h, rb = n.w / n.h;
+                if (Math.max(ra / rb, rb / ra) > 1.7) continue;
+                const sx = n.w / t.w, sy = n.h / t.h;
+                if (Math.max(sx / sy, sy / sx) > 1.6) continue;
+                const tr = { sx, sy, tx: n.x - t.x * sx, ty: n.y - t.y * sy };
+
+                let puntaje = 0;
+                const pares = [];
+                for (const tk of T) {
+                    const b = transformarCaja(tk, tr);
+                    let mejorV = 0, mejorN = null;
+                    for (const nk of N) {
+                        const v = iou(b, nk);
+                        if (v > mejorV) { mejorV = v; mejorN = nk; }
+                    }
+                    if (mejorV >= 0.45) { puntaje += mejorV; pares.push([tk, mejorN]); }
+                }
+                if (!mejor || puntaje > mejor.puntaje) mejor = { puntaje, tr, pares };
+            }
+        }
+
+        if (!mejor) return null;
+
+        // Afinar con todas las casillas emparejadas (bordes izquierdo/derecho y arriba/abajo).
+        if (mejor.pares.length >= 2) {
+            const px = [], py = [];
+            mejor.pares.forEach(([t, n]) => {
+                px.push([t.x, n.x], [t.x + t.w, n.x + n.w]);
+                py.push([t.y, n.y], [t.y + t.h, n.y + n.h]);
+            });
+            const fx = ajusteLineal(px), fy = ajusteLineal(py);
+            if (fx && fx.m > 0) { mejor.tr.sx = fx.m; mejor.tr.tx = fx.b; }
+            if (fy && fy.m > 0) { mejor.tr.sy = fy.m; mejor.tr.ty = fy.b; }
+        }
+
+        mejor.ok = mejor.puntaje >= Math.min(2, T.length * 0.5);
+        return mejor;
+    }
+
+    // ---------- Resultado por recibo ----------
+
+    async function deteccionDe(r) {
+        if (r.det) return r.det;
+        if (!r._detP) {
+            r._detP = (async () => {
+                const img = await createImageBitmap(r.blob);
+                const det = detectarTabla(img);
+                img.close && img.close();
+                return det;
+            })();
+        }
+        const det = await r._detP;
+        r._detP = null;
+        if (!r.det) {
+            r.det = det;
+            r._ct = null;
+            guardarReciboBD(r);
+        }
+        return r.det;
+    }
+
+    // Casillas de cada dato en este recibo, en fracciones de la imagen enderezada.
+    async function camposTablaDe(r) {
+
+        const f = formatoDe(r);
+        const det = await deteccionDe(r);
+        const version = (f.tabla && f.tabla.version) || 0;
+
+        if (r._ct && r._ct.v === version && r._ct.det === det && r._ct.f === f.id) return r._ct;
+
+        const ct = { v: version, det, f: f.id, ang: det.ang, campos: {}, origen: {}, fallos: [], ok: false, tr: null, puntaje: 0 };
+        const frac = c => ({ x: c.x / det.w, y: c.y / det.h, w: c.w / det.w, h: c.h / det.h });
+
+        const modelo = f.tabla;
+        if (modelo && modelo.celdas && Object.keys(modelo.campos || {}).length && det.celdas.length) {
+            const m = emparejarTabla(modelo.celdas, det.celdas);
+            if (m) { ct.ok = m.ok; ct.tr = m.tr; ct.puntaje = m.puntaje; }
+
+            ZONAS.forEach(z => {
+                const tf = modelo.campos[z.id];
+                if (!tf) return;
+                if (!m || !m.ok) { ct.fallos.push(z.id); return; }
+                const b = transformarCaja(tf, m.tr);
+                let mejorV = 0, mejorN = null;
+                det.celdas.forEach(n => { const v = iou(b, n); if (v > mejorV) { mejorV = v; mejorN = n; } });
+                if (mejorN && mejorV >= 0.35) {
+                    ct.campos[z.id] = frac(mejorN);
+                    ct.origen[z.id] = "auto";
+                } else {
+                    ct.fallos.push(z.id);
+                }
+            });
+        }
+
+        // Casillas elegidas a mano solo para este recibo.
+        if (r.celdasPropias) {
+            Object.entries(r.celdasPropias).forEach(([id, c]) => {
+                ct.campos[id] = c;
+                ct.origen[id] = "propia";
+                ct.fallos = ct.fallos.filter(x => x !== id);
+            });
+        }
+
+        r._ct = ct;
+        return ct;
+    }
+
+    // ---------- Coordenadas: imagen enderezada <-> imagen original <-> pantalla ----------
+
+    // Caja (px de la imagen de detección enderezada) -> 4 esquinas en pantalla.
+    function caja4Pantalla(c, det) {
+        const W = imagenVista.width, H = imagenVista.height;
+        const a = det.ang * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+        return [[c.x, c.y], [c.x + c.w, c.y], [c.x + c.w, c.y + c.h], [c.x, c.y + c.h]].map(([u, v]) => {
+            const dx = u * W / det.w - W / 2, dy = v * H / det.h - H / 2;
+            const X = dx * co - dy * si + W / 2, Y = dx * si + dy * co + H / 2;
+            return [vista.ox + X * vista.esc, vista.oy + Y * vista.esc];
+        });
+    }
+
+    // Punto de pantalla -> px de la imagen de detección enderezada.
+    function pantallaADeteccion(px, py, det) {
+        const W = imagenVista.width, H = imagenVista.height;
+        const f = aImagen(px, py);
+        const a = det.ang * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+        const dx = f.x * W - W / 2, dy = f.y * H - H / 2;
+        const X = dx * co + dy * si + W / 2, Y = -dx * si + dy * co + H / 2;
+        return { x: X * det.w / W, y: Y * det.h / H };
+    }
+
+    // Rectángulo (fracciones de la imagen original) que encierra la casilla de un dato.
+    function cajaTablaEnImagen(id) {
+        const r = recibos[indiceVista];
+        if (!r || !r.det || !r._ct || !r._ct.campos[id] || !imagenVista) return null;
+        const fr = r._ct.campos[id], det = r.det;
+        const p = caja4Pantalla({ x: fr.x * det.w, y: fr.y * det.h, w: fr.w * det.w, h: fr.h * det.h }, det)
+            .map(([x, y]) => aImagen(x, y));
+        const xs = p.map(q => q.x), ys = p.map(q => q.y);
+        const x = Math.min(...xs), y = Math.min(...ys);
+        return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+    }
+
+    // ---------- Cambios del modelo ----------
+
+    function modeloTablaCambio(f) {
+        f.tabla.version = (f.tabla.version || 0) + 1;
+        if (imagenVista) f.aspecto = imagenVista.width / imagenVista.height;
+        guardarFormatos();
+        recibos.forEach(r => { if (formatoDe(r) === f) { r._ct = null; r.tira = null; } });
+        marcarCollagesDesactualizados();
+        clearTimeout(modeloTablaCambio.t);
+        modeloTablaCambio.t = setTimeout(renderizarCapturas, 300);
+    }
+
+    // Tocar una casilla: se asigna al dato seleccionado.
+    async function asignarCasillaEn(px, py) {
+
+        const r = recibos[indiceVista];
+        if (!r || !imagenVista) return;
+
+        const f = formatoDe(r);
+        const det = await deteccionDe(r);
+        const q = pantallaADeteccion(px, py, det);
+        const dentro = det.celdas.filter(c => q.x >= c.x && q.x <= c.x + c.w && q.y >= c.y && q.y <= c.y + c.h)
+            .sort((a, b) => a.w * a.h - b.w * b.h);
+        const celda = dentro[0];
+        const zona = ZONAS.find(z => z.id === zonaActiva);
+
+        if (!celda) {
+            $("avisoTabla").textContent = "⚠️ Ahí no hay una casilla detectada. Toca dentro de una de las casillas con borde punteado, o usa 🔄 Detectar de nuevo.";
+            return;
+        }
+
+        const ct = await camposTablaDe(r);
+        const sinCampos = !f.tabla || !Object.keys(f.tabla.campos || {}).length;
+        let mensaje;
+
+        if (sinCampos || f.tabla.refId === r.id) {
+            // Este recibo es (o pasa a ser) el modelo del formato.
+            if (!f.tabla || f.tabla.refId !== r.id) {
+                f.tabla = { refId: r.id, celdas: det.celdas.map(c => ({ ...c })), campos: {}, version: (f.tabla && f.tabla.version) || 0 };
+            }
+            f.tabla.celdas = det.celdas.map(c => ({ ...c }));
+            f.tabla.campos[zonaActiva] = { ...celda };
+            if (r.celdasPropias) { delete r.celdasPropias[zonaActiva]; guardarReciboBD(r); }
+            modeloTablaCambio(f);
+            mensaje = `✅ ${zona.nombre}: casilla guardada en el modelo del formato "${f.nombre}".`;
+        } else if (!f.tabla.campos[zonaActiva] && ct.ok && ct.tr) {
+            // Dato nuevo: se pasa la casilla al sistema de coordenadas del modelo.
+            const t = ct.tr;
+            f.tabla.campos[zonaActiva] = { x: (celda.x - t.tx) / t.sx, y: (celda.y - t.ty) / t.sy, w: celda.w / t.sx, h: celda.h / t.sy };
+            modeloTablaCambio(f);
+            mensaje = `✅ ${zona.nombre}: casilla agregada al modelo del formato "${f.nombre}".`;
+        } else {
+            // Corrección solo para este recibo.
+            r.celdasPropias = r.celdasPropias || {};
+            r.celdasPropias[zonaActiva] = { x: celda.x / det.w, y: celda.y / det.h, w: celda.w / det.w, h: celda.h / det.h };
+            r._ct = null;
+            r.tira = null;
+            guardarReciboBD(r);
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            mensaje = `✂️ ${zona.nombre}: casilla elegida solo para este recibo. Si quieres que sea el modelo de todos, usa 📌 Este recibo como modelo.`;
+        }
+
+        await camposTablaDe(r);
+
+        // Avanza solo al siguiente dato que falte.
+        const desde = ZONAS.findIndex(z => z.id === zonaActiva);
+        const falta = ZONAS.slice(desde + 1).find(z => !r._ct.campos[z.id]);
+        if (falta) zonaActiva = falta.id;
+
+        renderizarBotonesZona();
+        dibujarLienzo();
+        $("avisoTabla").textContent = mensaje + (falta ? ` Ahora toca la casilla de ${falta.nombre}.` : "");
+    }
+
+    // ---------- Botones del método ----------
+
+    function pintarMetodo() {
+        const r = recibos[indiceVista];
+        const f = r ? formatoDe(r) : formatoActivo();
+        const tabla = f.metodo === "tabla";
+        document.querySelectorAll("[data-metodo]").forEach(b =>
+            b.classList.toggle("on", b.getAttribute("data-metodo") === (tabla ? "tabla" : "recuadros")));
+        $("btnDetectar").hidden = !tabla || !r;
+        $("btnModeloTabla").hidden = !tabla || !r || !(f.tabla && f.tabla.refId !== r.id && r._ct && Object.keys(r._ct.campos).length);
+        pintarModo();
+    }
+
+    document.querySelectorAll("[data-metodo]").forEach(b => b.addEventListener("click", async () => {
+        const r = recibos[indiceVista];
+        const f = r ? formatoDe(r) : formatoActivo();
+        const m = b.getAttribute("data-metodo");
+        if ((f.metodo || "recuadros") === m) return;
+        f.metodo = m;
+        guardarFormatos();
+        recibos.forEach(x => { if (formatoDe(x) === f) x.tira = null; });
+        modoEditor = "dibujar";
+        marcarCollagesDesactualizados();
+        await mostrarRecibo();
+        renderizarCapturas();
+        $("avisoTabla").textContent = m === "tabla"
+            ? (f.tabla && Object.keys(f.tabla.campos || {}).length
+                ? `▦ Formato "${f.nombre}": las casillas se buscan solas en cada recibo.`
+                : `▦ Formato "${f.nombre}": elige un dato a la derecha (código, nombre…) y toca su casilla en el recibo.`)
+            : `▭ Formato "${f.nombre}": vuelve a usar los recuadros que dibujas.`;
+    }));
+
+    $("btnDetectar").addEventListener("click", async () => {
+        const r = recibos[indiceVista];
+        if (!r) return;
+        r.det = null;
+        r._ct = null;
+        r.tira = null;
+        await mostrarRecibo();
+        renderizarCapturas();
+        marcarCollagesDesactualizados();
+        $("avisoTabla").textContent = `🔄 ${r.det ? r.det.celdas.length : 0} casilla(s) detectadas de nuevo.`;
+    });
+
+    $("btnModeloTabla").addEventListener("click", async () => {
+        const r = recibos[indiceVista];
+        if (!r) return;
+        const f = formatoDe(r);
+        const det = await deteccionDe(r);
+        const ct = await camposTablaDe(r);
+        if (!Object.keys(ct.campos).length) return;
+        if (!confirm(`¿Usar este recibo como modelo del formato "${f.nombre}"? Los demás recibos buscarán estas mismas casillas.`)) return;
+
+        const campos = {};
+        Object.entries(ct.campos).forEach(([id, c]) => {
+            campos[id] = { x: c.x * det.w, y: c.y * det.h, w: c.w * det.w, h: c.h * det.h };
+        });
+        f.tabla = { refId: r.id, celdas: det.celdas.map(c => ({ ...c })), campos, version: (f.tabla && f.tabla.version) || 0 };
+        r.celdasPropias = null;
+        guardarReciboBD(r);
+        modeloTablaCambio(f);
+        await mostrarRecibo();
+        $("avisoTabla").textContent = `📌 Este recibo es ahora el modelo del formato "${f.nombre}".`;
+    });
+
+    // Panel de la derecha en el método por casillas.
+    function renderizarBotonesTabla() {
+
+        const r = recibos[indiceVista];
+        const f = r ? formatoDe(r) : formatoActivo();
+        const ct = r && r._ct;
+        const modelo = f.tabla && f.tabla.campos ? f.tabla.campos : {};
+
+        const estado = id => {
+            if (ct && ct.campos[id]) return ct.origen[id] === "propia" ? ["Casilla propia de este recibo", "✂️"] : ["Casilla encontrada", "✅"];
+            if (modelo[id]) return [zonasDe(r)[id] ? "No encontrada: usa el recuadro" : "No encontrada en este recibo", "⚠️"];
+            if (zonasDe(r)[id]) return ["Sin casilla: usa el recuadro", "▭"];
+            return ["Sin asignar: toca su casilla", "—"];
+        };
+
+        let info = "Toma o carga un recibo para buscar sus casillas.";
+        if (r && r.det) {
+            info = `▦ <b>${r.det.celdas.length}</b> casilla(s) detectadas · inclinación ${r.det.ang.toFixed(1)}°`;
+            if (Object.keys(modelo).length) {
+                info += f.tabla.refId === r.id
+                    ? "<br>📌 Este recibo es el <b>modelo</b> del formato."
+                    : ct && ct.ok
+                        ? `<br>🔗 Tabla reconocida (coincidencia ${ct.puntaje.toFixed(1)}).`
+                        : "<br>⚠️ No se reconoció la tabla del modelo en este recibo.";
+            }
+        }
+
+        $("zonaBotones").innerHTML = ZONAS.map(z => {
+            const [txt, ic] = estado(z.id);
+            return `
+            <button type="button" class="zona-btn${zonaActiva === z.id ? " activa" : ""}" style="--c:${z.color}" data-zona="${z.id}">
+                <span class="muestra"></span>
+                <span>${z.nombre}<small>${txt}</small></span>
+                <span class="estado-zona">${ic}</span>
+            </button>`;
+        }).join("") + `
+            <div class="info-tabla">${info}</div>
+            <button type="button" class="btn-mini" id="btnIrZona">🔍 Acercar a la casilla seleccionada</button>
+            <button type="button" class="btn-mini" id="btnQuitarCasilla">🧽 Quitar la casilla seleccionada</button>
+            ${r && r.celdasPropias && Object.keys(r.celdasPropias).length
+                ? '<button type="button" class="btn-mini" id="btnVolverAuto">↩️ Este recibo: volver a la detección automática</button>'
+                : ""}
+            <div class="nota" style="margin-top:0">
+                Elige un dato y <b>toca su casilla</b> en el recibo (puedes arrastrar con la lupa y soltar encima).
+                Solo se recortan las casillas elegidas; el resto del recibo se ignora.
+                Los recuadros dibujados con ▭ Recuadros quedan como respaldo.
+            </div>
+        `;
+
+        $("zonaBotones").querySelectorAll("[data-zona]").forEach(b => {
+            b.addEventListener("click", () => {
+                zonaActiva = b.getAttribute("data-zona");
+                renderizarBotonesZona();
+                dibujarLienzo();
+            });
+        });
+
+        $("btnIrZona").addEventListener("click", irAZonaActiva);
+
+        $("btnQuitarCasilla").addEventListener("click", () => {
+            if (!r) return;
+            if (r.celdasPropias && r.celdasPropias[zonaActiva]) {
+                delete r.celdasPropias[zonaActiva];
+                r._ct = null;
+                r.tira = null;
+                guardarReciboBD(r);
+                marcarCollagesDesactualizados();
+                renderizarCapturas();
+            } else if (f.tabla && f.tabla.campos && f.tabla.campos[zonaActiva]) {
+                delete f.tabla.campos[zonaActiva];
+                modeloTablaCambio(f);
+            } else {
+                return;
+            }
+            camposTablaDe(r).then(() => { renderizarBotonesZona(); dibujarLienzo(); });
+        });
+
+        const bv = $("btnVolverAuto");
+        if (bv) bv.addEventListener("click", () => {
+            r.celdasPropias = null;
+            r._ct = null;
+            r.tira = null;
+            guardarReciboBD(r);
+            marcarCollagesDesactualizados();
+            renderizarCapturas();
+            camposTablaDe(r).then(() => { renderizarBotonesZona(); dibujarLienzo(); });
+        });
+
+        $("btnModeloTabla").hidden = !r || !(f.tabla && f.tabla.refId !== r.id && ct && Object.keys(ct.campos).length);
+    }
 
     // ==========================================================
     // RECORTES ESTRICTOS DE LAS ZONAS
@@ -2251,6 +3220,25 @@
         const zonas = zonasDe(recibo);
         const margen = margenActual();
         const out = {};
+
+        if (formatoDe(recibo).metodo === "tabla") {
+            // Casillas de la tabla: se recortan de la foto enderezada.
+            // El dato sin casilla encontrada usa el recuadro del formato (respaldo).
+            let ct = null;
+            try { ct = await camposTablaDe(recibo); } catch (e) { ct = null; }
+            let recta = null;
+            ZONAS.forEach(z => {
+                if (ct && ct.campos[z.id]) {
+                    recta = recta || enderezarImagen(img, ct.ang);
+                    out[z.id] = recortarZona(recta, ct.campos[z.id], margen);
+                } else if (zonas[z.id]) {
+                    out[z.id] = recortarZona(img, zonas[z.id], margen);
+                }
+            });
+            img.close && img.close();
+            return out;
+        }
+
         ZONAS.forEach(z => { if (zonas[z.id]) out[z.id] = recortarZona(img, zonas[z.id], margen); });
         img.close && img.close();
         return out;
@@ -2330,7 +3318,7 @@
         temporizadorVista = setTimeout(async () => {
             const r = recibos[indiceVista];
             const cont = $("pruebaLectura");
-            if (!r || !ZONAS.some(z => zonasDe(r)[z.id])) {
+            if (!r || !ZONAS.some(z => tieneCampo(r, z.id))) {
                 cont.innerHTML = r ? "Marca las zonas para ver aquí cómo queda el recorte." : "";
                 return;
             }
@@ -2380,6 +3368,9 @@
         recibo.ancho = girado.width;
         recibo.alto = girado.height;
         recibo.tira = null;
+        recibo.det = null;              // la tabla se busca de nuevo en la foto girada
+        recibo.celdasPropias = null;
+        recibo._ct = null;
 
         // Si el recibo tiene zonas propias, giran con la imagen.
         if (recibo.zonas) {
@@ -2448,7 +3439,7 @@
                     ${sinZonas
                         ? '<span class="nota" style="margin:0">Marca las zonas en el paso 2</span>'
                         : `<img class="tira" alt="Recorte del recibo ${i + 1}" ${r.tira ? `src="${r.tira}"` : ""}>`}
-                    <small>${variosFormatos ? `<b>${escapeHTML(formatoDe(r).nombre)}</b> · ` : ""}${escapeHTML(r.archivo)}${r.zonas ? " · ✂️ zonas propias" : ""}</small>
+                    <small>${variosFormatos ? `<b>${escapeHTML(formatoDe(r).nombre)}</b> · ` : ""}${escapeHTML(r.archivo)}${r.zonas ? " · ✂️ zonas propias" : ""}${formatoDe(r).metodo === "tabla" ? " · ▦ casillas" : ""}<span class="aviso-tabla">${avisoTablaDe(r)}</span></small>
                 </div>
                 <div class="captura-acciones">
                     <button type="button" class="btn-mini" data-accion="rehacer" title="Tomar de nuevo esta foto con la cámara (reemplaza la actual)">📷 Rehacer</button>
@@ -2475,6 +3466,9 @@
         recibo.alto = canvas.height;
         recibo.zonas = null;      // la foto nueva se alinea con las zonas del formato
         recibo.tira = null;
+        recibo.det = null;
+        recibo.celdasPropias = null;
+        recibo._ct = null;
         recibo.archivo = `${origen} · rehecho`;
 
         await guardarReciboBD(recibo);
@@ -2509,6 +3503,12 @@
         }
     });
 
+    // Aviso en la lista de capturas cuando falta alguna casilla (método tabla).
+    function avisoTablaDe(r) {
+        if (formatoDe(r).metodo !== "tabla" || !r._ct || !r._ct.fallos.length) return "";
+        return " · ⚠️ sin casilla: " + r._ct.fallos.map(id => ZONAS.find(z => z.id === id).rotulo.toLowerCase()).join(", ");
+    }
+
     let generandoTiras = false;
 
     async function generarTirasPendientes() {
@@ -2523,6 +3523,8 @@
             }
             const img = document.querySelector(`.captura[data-i="${i}"] img.tira`);
             if (img && r.tira && img.getAttribute("src") !== r.tira) img.src = r.tira;
+            const av = document.querySelector(`.captura[data-i="${i}"] .aviso-tabla`);
+            if (av) av.textContent = avisoTablaDe(r);
         }
 
         generandoTiras = false;
@@ -2566,7 +3568,8 @@
             mostrarRecibo();
         } else {
             indiceVista = i;
-            if (!r.zonas) { r.zonas = JSON.parse(JSON.stringify(formatoDe(r).zonas)); guardarReciboBD(r); }
+            // En el método por casillas no se copian recuadros: solo se abre el recibo para elegir sus casillas.
+            if (formatoDe(r).metodo !== "tabla" && !r.zonas) { r.zonas = JSON.parse(JSON.stringify(formatoDe(r).zonas)); guardarReciboBD(r); }
             r.tira = null;
             await mostrarRecibo();
             $("lienzoZonas").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2866,7 +3869,7 @@
     async function construirCollage(lote, info, opciones) {
 
         // Solo salen los campos que tienen recuadro en algún recibo del lote (en orden fijo).
-        let zonasUsadas = ZONAS.filter(z => lote.some(it => zonasDe(it.recibo)[z.id]));
+        let zonasUsadas = ZONAS.filter(z => lote.some(it => tieneCampo(it.recibo, z.id)));
         if (info.campo) zonasUsadas = zonasUsadas.filter(z => z.id === info.campo.id);
 
         const ficha = opciones.disposicion === "apilado";
@@ -3206,7 +4209,7 @@
 
                 if (porCampo) {
                     // Un collage por dato: todos los códigos juntos, todos los nombres juntos, etc.
-                    const campos = ZONAS.filter(z => lotes[k].items.some(it => zonasDe(it.recibo)[z.id]));
+                    const campos = ZONAS.filter(z => lotes[k].items.some(it => tieneCampo(it.recibo, z.id)));
                     for (const z of campos) {
                         setStatus($("statusCollages"), `🧩 Lote ${k + 1} de ${lotes.length}: ${z.rotulo.toLowerCase()}…`);
                         collages.push(...await construirCollage(lotes[k].items, { ...info, campo: z }, { ...opciones, disposicion: "fila" }));
@@ -3486,7 +4489,7 @@
         actualizarContador();
         pintarReemplazo();
         pintarFormatoCamara();
-        mostrarAvisoCamara(ZONAS.some(z => formatoCamara().zonas[z.id])
+        mostrarAvisoCamara(formatoTieneCampos(formatoCamara())
             ? "Alinea el recibo dentro del recuadro, con el texto dentro de cada zona."
             : "Este formato aún no tiene zonas: toma un recibo, márcale las zonas en el paso 2 y vuelve a la cámara.", 4000);
 
@@ -3903,7 +4906,7 @@
         marcarCollagesDesactualizados();
         actualizarContador();
 
-        if (!ZONAS.some(z => formatoDe(recibo).zonas[z.id])) {
+        if (!formatoTieneCampos(formatoDe(recibo))) {
             mostrarAvisoCamara(`📄 Recibo ${numero} guardado. Cierra la cámara y márcale las zonas en el paso 2.`);
             return;
         }
