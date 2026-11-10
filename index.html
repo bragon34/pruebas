@@ -1052,7 +1052,7 @@
 <div class="app">
 
     <div class="card">
-        <h1>✂️ Recortes de Recibos → Collages <small style="font-size:13px;color:#94a3b8">v2.0</small></h1>
+        <h1>✂️ Recortes de Recibos → Collages <small style="font-size:13px;color:#94a3b8">v2.4</small></h1>
         <p class="sub">
             Captura los recibos con el recuadro guía. La página recorta <strong>exactamente</strong> las zonas que marcaste
             (código, nombre, dirección, teléfono) y las une en collages numerados de 15 recibos por imagen, con todos los recortes del
@@ -1103,6 +1103,7 @@
                     <div class="grupo-herr">
                         <button type="button" class="herr" data-metodo="recuadros" title="Recuadros fijos que tú dibujas sobre el recibo">▭ Recuadros</button>
                         <button type="button" class="herr" data-metodo="tabla" title="La página busca sola las casillas de la tabla impresa en cada recibo">▦ Casillas de la tabla</button>
+                        <button type="button" class="herr" data-metodo="completo" title="Recibo con todos los datos: ticket, cliente, datos técnicos y observación. Dibuja un recuadro por dato, después de los dos puntos">▤ Datos completos</button>
                     </div>
                     <button type="button" class="btn-mini" id="btnDetectar" hidden title="Buscar otra vez las casillas en este recibo">🔄 Detectar de nuevo</button>
                     <button type="button" class="btn-mini" id="btnModeloTabla" hidden title="Las casillas elegidas en este recibo pasan a ser el modelo del formato">📌 Este recibo como modelo</button>
@@ -1129,6 +1130,7 @@
                     En <b>✥ Ajustar</b>, arrastra la zona para moverla o sus cuadritos para cambiar el tamaño.
                     Mientras arrastras aparece una <b>🔍 lupa</b> en la esquina contraria para ver el borde exacto.
                     Con <b>▦ Casillas de la tabla</b>: elige un dato a la derecha y toca su casilla en el recibo.
+                    Con <b>▤ Datos completos</b>: dibuja un recuadro por dato, justo después de los dos puntos (sin el rótulo).
                 </p>
                 <div id="avisoTabla" class="nota"></div>
                 <div class="nav-recibo" style="margin-top:8px">
@@ -1205,6 +1207,7 @@
             <label class="campo" title="En la hoja A4 de una columna, agranda los datos para que ocupen el ancho de la hoja. Recomendado para la IA de texto del celular."><input type="checkbox" id="optLetraGrande" checked> Letra grande (para la IA del celular)</label>
             <label class="campo" title="En los collages por dato: quita las líneas de las casillas impresas y el fondo gris, recorta el blanco sobrante y deja todas las letras del mismo alto. Muy recomendado con fotos reales."><input type="checkbox" id="optLimpiar" checked> Limpiar para OCR (quita bordes y fondo)</label>
             <label class="campo"><input type="checkbox" id="optSeparar" checked> Separar collages por formato</label>
+            <label class="campo" title="Escribe @@ al final de cada línea del collage. En el texto del OCR cada dato termina en @@, así sabes dónde empieza el siguiente aunque la app junte o parta líneas."><input type="checkbox" id="optDelimitador"> Agregar delimitador @@ al final de cada línea</label>
         </div>
         <div class="toolbar">
             <button class="btn green" id="btnGenerar">🧩 Generar collages</button>
@@ -1216,6 +1219,8 @@
         </div>
         <p class="nota">
             Orden de los campos: <b>código, nombre, dirección, teléfono</b>. El campo que no tenga recuadro en el formato no sale.
+            En <b>▤ Datos completos</b> las columnas son: ticket, nombre, dirección, teléfono, email, ID cliente, datos técnicos y observación
+            (ticket y datos técnicos van agrupados, un dato por renglón). Usa la hoja A4 horizontal o la tira larga para que la letra no quede pequeña.
             Para recibos con datos de varias líneas usa <b>Ficha por recibo</b>: cada campo queda en su propio bloque y el OCR no mezcla renglones de distintos campos.
         </p>
         <div class="progreso"><div id="barra"></div></div>
@@ -1281,8 +1286,62 @@
         { id: "codigo",    nombre: "🔢 Código",    rotulo: "CÓDIGO",    color: "#059669", ancho: 520 },
         { id: "nombre",    nombre: "👤 Nombre",    rotulo: "NOMBRE",    color: "#2563eb", ancho: 900 },
         { id: "direccion", nombre: "🏠 Dirección", rotulo: "DIRECCIÓN", color: "#dc2626", ancho: 1100 },
-        { id: "telefono",  nombre: "📞 Teléfono",  rotulo: "TELÉFONO",  color: "#9333ea", ancho: 600 }
+        { id: "telefono",  nombre: "📞 Teléfono",  rotulo: "TELÉFONO",  color: "#9333ea", ancho: 600 },
+
+        // Campos extra: solo existen en el método "▤ Datos completos".
+        { id: "ticket",      nombre: "🎫 Ticket N°",     rotulo: "TICKET",      color: "#d97706", ancho: 460, extra: true },
+        { id: "creado",      nombre: "🕒 Creado el",     rotulo: "CREADO",      color: "#b45309", ancho: 460, extra: true },
+        { id: "estado",      nombre: "📌 Estado",        rotulo: "ESTADO",      color: "#92400e", ancho: 460, extra: true },
+        { id: "creador",     nombre: "🧑 Creador",       rotulo: "CREADOR",     color: "#78350f", ancho: 460, extra: true },
+        { id: "email",       nombre: "✉️ Email",         rotulo: "EMAIL",       color: "#0284c7", ancho: 560, extra: true },
+        { id: "servidor",    nombre: "🖥️ Servidor",      rotulo: "SERVIDOR",    color: "#0d9488", ancho: 560, extra: true },
+        { id: "ip",          nombre: "🌐 IP",            rotulo: "IP",          color: "#0f766e", ancho: 560, extra: true },
+        { id: "mac",         nombre: "🔌 Dirección MAC", rotulo: "MAC",         color: "#115e59", ancho: 560, extra: true },
+        { id: "plan",        nombre: "📶 Plan",          rotulo: "PLAN",        color: "#14b8a6", ancho: 560, extra: true },
+        { id: "servicio",    nombre: "⚙️ Servicio",      rotulo: "SERVICIO",    color: "#134e4a", ancho: 560, extra: true },
+        { id: "observacion", nombre: "📝 Observación",   rotulo: "OBSERVACIÓN", color: "#db2777", ancho: 500, extra: true }
     ];
+
+    // En "Datos completos" el código es el ID Cliente.
+    ZONAS[0].nombreCompleto = "🔢 ID Cliente";
+
+    // Orden de marcado en "Datos completos" (el mismo orden de arriba a abajo del recibo).
+    const ORDEN_COMPLETO = ["ticket", "creado", "estado", "creador", "nombre", "direccion", "telefono", "email", "codigo",
+        "servidor", "ip", "mac", "plan", "servicio", "observacion"];
+
+    // Columnas del collage en "Datos completos". Las de varios campos van en una sola celda, un dato por renglón.
+    const COLUMNAS_COMPLETO = [
+        { id: "g_ticket",    rotulo: "TICKET",         ancho: 460, campos: ["ticket", "creado", "estado", "creador"] },
+        { id: "nombre",      rotulo: "NOMBRE",         ancho: 700, campos: ["nombre"] },
+        { id: "direccion",   rotulo: "DIRECCIÓN",      ancho: 900, campos: ["direccion"] },
+        { id: "telefono",    rotulo: "TELÉFONO",       ancho: 420, campos: ["telefono"] },
+        { id: "email",       rotulo: "EMAIL",          ancho: 560, campos: ["email"] },
+        { id: "codigo",      rotulo: "ID CLIENTE",     ancho: 360, campos: ["codigo"] },
+        { id: "g_tecnico",   rotulo: "DATOS TÉCNICOS", ancho: 560, campos: ["servidor", "ip", "mac", "plan", "servicio"] },
+        { id: "observacion", rotulo: "OBSERVACIÓN",    ancho: 500, campos: ["observacion"] }
+    ];
+
+    // Alto de cada renglón dentro de una celda agrupada (antes de reducir la hoja).
+    const ALTO_RENGLON_GRUPO = 64;
+
+    // Campos que usa un formato, en el orden en que se marcan.
+    function camposFormato(f) {
+        if (f && f.metodo === "completo") return ORDEN_COMPLETO.map(id => ZONAS.find(z => z.id === id));
+        return ZONAS.filter(z => !z.extra);
+    }
+
+    function etiquetaZona(z, f) {
+        return f && f.metodo === "completo" && z.nombreCompleto ? z.nombreCompleto : z.nombre;
+    }
+
+    // Columnas del collage para un lote de recibos.
+    function columnasDe(lote) {
+        if (lote.some(it => formatoDe(it.recibo).metodo === "completo")) {
+            return COLUMNAS_COMPLETO.filter(col => col.campos.some(id => lote.some(it => tieneCampo(it.recibo, id))));
+        }
+        return ZONAS.filter(z => !z.extra && lote.some(it => tieneCampo(it.recibo, z.id)))
+            .map(z => ({ id: z.id, rotulo: z.rotulo, ancho: z.ancho, campos: [z.id] }));
+    }
 
     // Se comparte con la página OCR: si ya marcaste zonas allá, aparecen aquí.
     const CLAVE_PLANTILLA = "ocrRecibos.plantilla";
@@ -1364,7 +1423,7 @@
     })();
 
     // Opciones del collage recordadas en el dispositivo.
-    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optLetraGrande", "optLimpiar", "optSeparar"];
+    const OPCIONES = ["optPorCollage", "optPagina", "optDisposicion", "optMargen", "optContraste", "optFormato", "optRotulos", "optNumeros", "optLetraGrande", "optLimpiar", "optSeparar", "optDelimitador"];
 
     try {
         const o = JSON.parse(localStorage.getItem(CLAVE_OPCIONES) || "{}");
@@ -1623,12 +1682,15 @@
     }
 
     function renderizarBotonesZona() {
+        const fVista = formatoDe(recibos[indiceVista]);
+        const lista = camposFormato(fVista);
+        if (!lista.some(z => z.id === zonaActiva)) zonaActiva = lista[0].id;
         if (metodoTablaVista()) { renderizarBotonesTabla(); return; }
         const zonas = zonasDe(recibos[indiceVista]);
-        $("zonaBotones").innerHTML = ZONAS.map(z => `
+        $("zonaBotones").innerHTML = lista.map(z => `
             <button type="button" class="zona-btn${zonaActiva === z.id ? " activa" : ""}" style="--c:${z.color}" data-zona="${z.id}">
                 <span class="muestra"></span>
-                <span>${z.nombre}<small>${zonas[z.id] ? "Marcado" : "Sin marcar (no se exporta)"}</small></span>
+                <span>${etiquetaZona(z, fVista)}<small>${zonas[z.id] ? "Marcado" : "Sin marcar (no se exporta)"}</small></span>
                 <span class="estado-zona">${zonas[z.id] ? "✅" : "—"}</span>
             </button>
         `).join("") + `
@@ -1875,8 +1937,9 @@
         }
 
         const zonas = zonasDe(recibos[indiceVista]);
+        const fVista = formatoDe(recibos[indiceVista]);
 
-        ZONAS.forEach(z => {
+        camposFormato(fVista).forEach(z => {
             const r = zonas[z.id];
             if (!r) return;
             const p = aPantalla(r);
@@ -1890,7 +1953,7 @@
 
             if (conEtiquetas) {
                 g.font = "bold 13px Arial";
-                const etiqueta = z.nombre;
+                const etiqueta = etiquetaZona(z, fVista);
                 const tw = g.measureText(etiqueta).width + 10;
                 g.fillStyle = z.color;
                 g.fillRect(p.x, p.y - 20, tw, 20);
@@ -2042,7 +2105,7 @@
         g.setLineDash([]);
 
         // Casillas asignadas a cada dato.
-        ZONAS.forEach(z => {
+        camposFormato(formatoDe(r)).forEach(z => {
             const activa = zonaActiva === z.id;
             const fr = ct && ct.campos[z.id];
             if (fr) {
@@ -2135,7 +2198,7 @@
         }
 
         // Interior: primero la activa, luego las demás.
-        const orden = [zonaActiva, ...ZONAS.map(z => z.id).filter(id => id !== zonaActiva)];
+        const orden = [zonaActiva, ...camposFormato(formatoDe(recibos[indiceVista])).map(z => z.id).filter(id => id !== zonaActiva)];
         for (const id of orden) {
             const z = zonas[id];
             if (!z) continue;
@@ -2297,8 +2360,9 @@
                 confirmarCambioZona();
 
                 // Avanza sola a la siguiente zona que falte; si ya están todas, pasa a ajustar.
-                const desde = ZONAS.findIndex(z => z.id === zonaActiva);
-                const falta = ZONAS.slice(desde + 1).find(z => !destino[z.id]);
+                const listaCampos = camposFormato(formatoDe(recibos[indiceVista]));
+                const desde = listaCampos.findIndex(z => z.id === zonaActiva);
+                const falta = listaCampos.slice(desde + 1).find(z => !destino[z.id]);
                 if (falta) {
                     zonaActiva = falta.id;
                 } else {
@@ -2399,7 +2463,7 @@
     function renderizarFormatos() {
 
         const opciones = formatos.map(f =>
-            `<option value="${f.id}">${escapeHTML(f.nombre)}${f.metodo === "tabla" ? " ▦" : ""}${formatoTieneCampos(f) ? "" : " (sin zonas)"}</option>`).join("");
+            `<option value="${f.id}">${escapeHTML(f.nombre)}${f.metodo === "tabla" ? " ▦" : f.metodo === "completo" ? " ▤" : ""}${formatoTieneCampos(f) ? "" : " (sin zonas)"}</option>`).join("");
 
         $("selFormato").innerHTML = opciones;
         $("selFormato").value = String(formatoActivoId);
@@ -2541,6 +2605,7 @@
     // ¿Este recibo tiene el dato `id` para exportar?
     function tieneCampo(recibo, id) {
         const f = formatoDe(recibo);
+        if (!camposFormato(f).some(z => z.id === id)) return false;
         if (f.metodo === "tabla") {
             return !!(f.tabla && f.tabla.campos && f.tabla.campos[id]) ||
                 !!(recibo && recibo.celdasPropias && recibo.celdasPropias[id]) ||
@@ -2551,7 +2616,7 @@
 
     function formatoTieneCampos(f) {
         if (f.metodo === "tabla" && f.tabla && Object.keys(f.tabla.campos || {}).length) return true;
-        return ZONAS.some(z => f.zonas[z.id]);
+        return camposFormato(f).some(z => f.zonas[z.id]);
     }
 
     // ---------- Imagen ----------
@@ -2897,7 +2962,7 @@
             const m = emparejarTabla(modelo.celdas, det.celdas);
             if (m) { ct.ok = m.ok; ct.tr = m.tr; ct.puntaje = m.puntaje; }
 
-            ZONAS.forEach(z => {
+            camposFormato(f).forEach(z => {
                 const tf = modelo.campos[z.id];
                 if (!tf) return;
                 if (!m || !m.ok) { ct.fallos.push(z.id); return; }
@@ -3027,8 +3092,9 @@
         await camposTablaDe(r);
 
         // Avanza solo al siguiente dato que falte.
-        const desde = ZONAS.findIndex(z => z.id === zonaActiva);
-        const falta = ZONAS.slice(desde + 1).find(z => !r._ct.campos[z.id]);
+        const listaCampos = camposFormato(f);
+        const desde = listaCampos.findIndex(z => z.id === zonaActiva);
+        const falta = listaCampos.slice(desde + 1).find(z => !r._ct.campos[z.id]);
         if (falta) zonaActiva = falta.id;
 
         renderizarBotonesZona();
@@ -3043,7 +3109,7 @@
         const f = r ? formatoDe(r) : formatoActivo();
         const tabla = f.metodo === "tabla";
         document.querySelectorAll("[data-metodo]").forEach(b =>
-            b.classList.toggle("on", b.getAttribute("data-metodo") === (tabla ? "tabla" : "recuadros")));
+            b.classList.toggle("on", b.getAttribute("data-metodo") === (f.metodo || "recuadros")));
         $("btnDetectar").hidden = !tabla || !r;
         $("btnModeloTabla").hidden = !tabla || !r || !(f.tabla && f.tabla.refId !== r.id && r._ct && Object.keys(r._ct.campos).length);
         pintarModo();
@@ -3058,6 +3124,7 @@
         guardarFormatos();
         recibos.forEach(x => { if (formatoDe(x) === f) x.tira = null; });
         modoEditor = "dibujar";
+        zonaActiva = camposFormato(f)[0].id;
         marcarCollagesDesactualizados();
         await mostrarRecibo();
         renderizarCapturas();
@@ -3065,7 +3132,9 @@
             ? (f.tabla && Object.keys(f.tabla.campos || {}).length
                 ? `▦ Formato "${f.nombre}": las casillas se buscan solas en cada recibo.`
                 : `▦ Formato "${f.nombre}": elige un dato a la derecha (código, nombre…) y toca su casilla en el recibo.`)
-            : `▭ Formato "${f.nombre}": vuelve a usar los recuadros que dibujas.`;
+            : m === "completo"
+                ? `▤ Formato "${f.nombre}": dibuja un recuadro por dato, después de los dos puntos. Empieza por ${camposFormato(f)[0].nombre}.`
+                : `▭ Formato "${f.nombre}": vuelve a usar los recuadros que dibujas.`;
     }));
 
     $("btnDetectar").addEventListener("click", async () => {
@@ -3128,7 +3197,7 @@
             }
         }
 
-        $("zonaBotones").innerHTML = ZONAS.map(z => {
+        $("zonaBotones").innerHTML = camposFormato(f).map(z => {
             const [txt, ic] = estado(z.id);
             return `
             <button type="button" class="zona-btn${zonaActiva === z.id ? " activa" : ""}" style="--c:${z.color}" data-zona="${z.id}">
@@ -3221,13 +3290,15 @@
         const margen = margenActual();
         const out = {};
 
+        const campos = camposFormato(formatoDe(recibo));
+
         if (formatoDe(recibo).metodo === "tabla") {
             // Casillas de la tabla: se recortan de la foto enderezada.
             // El dato sin casilla encontrada usa el recuadro del formato (respaldo).
             let ct = null;
             try { ct = await camposTablaDe(recibo); } catch (e) { ct = null; }
             let recta = null;
-            ZONAS.forEach(z => {
+            campos.forEach(z => {
                 if (ct && ct.campos[z.id]) {
                     recta = recta || enderezarImagen(img, ct.ang);
                     out[z.id] = recortarZona(recta, ct.campos[z.id], margen);
@@ -3239,7 +3310,7 @@
             return out;
         }
 
-        ZONAS.forEach(z => { if (zonas[z.id]) out[z.id] = recortarZona(img, zonas[z.id], margen); });
+        campos.forEach(z => { if (zonas[z.id]) out[z.id] = recortarZona(img, zonas[z.id], margen); });
         img.close && img.close();
         return out;
     }
@@ -3280,7 +3351,7 @@
     async function tiraMiniatura(recibo, alto) {
 
         const recs = await recortesDe(recibo);
-        const lista = ZONAS.filter(z => recs[z.id]).map(z => recs[z.id]);
+        const lista = camposFormato(formatoDe(recibo)).filter(z => recs[z.id]).map(z => recs[z.id]);
 
         if (!lista.length) return null;
 
@@ -3604,6 +3675,34 @@
         g.textBaseline = "alphabetic";
     }
 
+    // Une varios recortes en una sola celda, uno debajo de otro (salto de línea).
+    // El dato que falte deja un "—" en su renglón para no correr el orden.
+    function apilarRecortes(partes) {
+        const HUECO_RENGLON = 12, ALTO_VACIO = 44;
+        const w = Math.max(80, ...partes.map(p => p ? p.width : 0));
+        const h = partes.reduce((s, p) => s + (p ? p.height : ALTO_VACIO), 0) + HUECO_RENGLON * (partes.length - 1);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = Math.max(1, h);
+        const g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, c.width, c.height);
+        let y = 0;
+        partes.forEach(p => {
+            if (p) {
+                g.drawImage(p, 0, y);
+                y += p.height;
+            } else {
+                g.fillStyle = "#94a3b8";
+                g.font = "bold 30px Arial";
+                g.fillText("—", 4, y + ALTO_VACIO / 2 + 10);
+                y += ALTO_VACIO;
+            }
+            y += HUECO_RENGLON;
+        });
+        return c;
+    }
+
     const ANCHO_ROTULO = 210;   // columna de rótulos en la disposición "ficha"
     const ANCHO_FICHA = 1100;   // ancho de cada recorte en la disposición "ficha"
 
@@ -3656,8 +3755,22 @@
     // altoLinea: alto final de cada renglón de texto, en píxeles.
     function limpiarParaOCR(c, altoLinea) {
 
+        if (c.width < 6 || c.height < 6) return c;
+
+        // Recorte pequeño: se agranda (suavizado) antes de pasarlo a blanco y negro.
+        // Si se agranda después, la letra queda en bloques y el OCR no la lee.
+        if (c.height < altoLinea * 1.5) {
+            const k = Math.min(4, (altoLinea * 1.5) / c.height);
+            const grande = document.createElement("canvas");
+            grande.width = Math.round(c.width * k);
+            grande.height = Math.round(c.height * k);
+            const gg = grande.getContext("2d");
+            gg.imageSmoothingQuality = "high";
+            gg.drawImage(c, 0, 0, grande.width, grande.height);
+            c = grande;
+        }
+
         const w = c.width, h = c.height;
-        if (w < 6 || h < 6) return c;
 
         const d = c.getContext("2d").getImageData(0, 0, w, h).data;
         const gris = new Uint8Array(w * h);
@@ -3684,17 +3797,21 @@
             cambios[y] = t;
         }
 
-        const esLinea = y => fraccion[y] > 0.5;
+        // Línea = mucha tinta y casi sin cambios. La letra en negrita también tiene mucha
+        // tinta, pero cambia de tinta a papel en cada letra: esa fila no se borra.
+        const esLinea = y => fraccion[y] > 0.5 && cambios[y] <= 6;
         const esTexto = y => cambios[y] >= 6 && fraccion[y] > 0.03 && !esLinea(y);
 
         // Filas-línea horizontales: se borran.
         for (let y = 0; y < h; y++) if (esLinea(y)) tinta.fill(0, y * w, (y + 1) * w);
 
-        // Columnas-línea verticales (bordes de la casilla): tinta en más del 60 % del alto.
+        // Columnas-línea verticales (bordes de la casilla): tinta en casi todo el alto (90 %),
+        // solo cerca de los lados del recorte. En el medio son trazos de letras (l, I, D…).
         for (let x = 0; x < w; x++) {
+            if (x > w * 0.06 && x < w * 0.94) continue;
             let n = 0;
             for (let y = 0; y < h; y++) n += tinta[y * w + x];
-            if (n > h * 0.6) {
+            if (n > h * 0.9) {
                 for (let xx = Math.max(0, x - 1); xx <= Math.min(w - 1, x + 1); xx++) {
                     for (let y = 0; y < h; y++) tinta[y * w + xx] = 0;
                 }
@@ -3849,6 +3966,38 @@
 
     // Límites para que el celular pueda crear la imagen (los navegadores móviles
     // no permiten lienzos gigantes).
+    // ---------- Delimitador "@@" al final de cada línea ----------
+
+    const TAM_DELIM_MAX = 110;     // tamaño de letra máximo del "@@"
+    const ESPACIO_DELIM = 30;     // separación entre el dato y el "@@"
+
+    function anchoTextoDelim(tam) {
+        const g = document.createElement("canvas").getContext("2d");
+        g.font = `bold ${tam}px Arial`;
+        return Math.ceil(g.measureText("@@").width + tam * 0.05);
+    }
+
+    // Dibuja "@@" en negro, del alto aproximado del texto del dato, centrado en yCentro.
+    function dibujarDelimitador(g, x, yCentro, altoDato) {
+        // Del mismo alto que las letras del dato (la @ de Arial mide ~0,8 del tamaño de letra).
+        const tam = Math.max(28, Math.min(TAM_DELIM_MAX, Math.round(altoDato * 1.0)));
+        g.save();
+        g.fillStyle = "#000000";
+        g.font = `bold ${tam}px Arial`;
+        g.textBaseline = "middle";
+        g.textAlign = "left";
+        // Las dos @ con un pequeño espacio entre ellas: si se tocan, el OCR a veces lee "@e@".
+        const w = g.measureText("@").width;
+        // Fondo blanco detrás (en las filas sombreadas el gris confunde al OCR).
+        const esp = Math.round(tam * 0.05);
+        g.fillStyle = "#ffffff";
+        g.fillRect(x - 6, yCentro - tam * 0.7, 2 * w + esp + 12, tam * 1.4);
+        g.fillStyle = "#000000";
+        g.fillText("@", x, yCentro);
+        g.fillText("@", x + w + esp, yCentro);
+        g.restore();
+    }
+
     const MAX_ALTO_COLLAGE = 14000;
     const MAX_AREA_COLLAGE = 16000000;
 
@@ -3869,7 +4018,8 @@
     async function construirCollage(lote, info, opciones) {
 
         // Solo salen los campos que tienen recuadro en algún recibo del lote (en orden fijo).
-        let zonasUsadas = ZONAS.filter(z => lote.some(it => tieneCampo(it.recibo, z.id)));
+        // Cada columna tiene uno o varios campos (ticket y datos técnicos van agrupados).
+        let zonasUsadas = columnasDe(lote);
         if (info.campo) zonasUsadas = zonasUsadas.filter(z => z.id === info.campo.id);
 
         const ficha = opciones.disposicion === "apilado";
@@ -3893,18 +4043,15 @@
             const recs = await recortesDe(it.recibo);
             const celdas = {};
 
-            zonasUsadas.forEach(z => {
-                const c = recs[z.id];
-                if (!c) return;
+            const preparar = (c, z, grupo) => {
 
                 // Collage por dato con limpieza: sin bordes, blanco y negro y letra pareja.
-                if (compacto && opciones.limpiar) {
-                    celdas[z.id] = limpiarParaOCR(c, opciones.letraGrande ? 80 : 56);
-                    return;
-                }
+                if (compacto && opciones.limpiar) return limpiarParaOCR(c, opciones.letraGrande ? 80 : 56);
 
                 const anchoCol = ficha ? ANCHO_FICHA : anchoDe(z);
-                const esc = Math.min(compacto ? 2.2 : 3, anchoCol / c.width);
+                let esc = Math.min(compacto ? 2.2 : 3, anchoCol / c.width);
+                // En una celda agrupada todos los renglones quedan con letra del mismo alto.
+                if (grupo) esc = Math.min(esc, ALTO_RENGLON_GRUPO / c.height);
                 const e = document.createElement("canvas");
                 e.width = Math.max(1, Math.round(c.width * esc));
                 e.height = Math.max(1, Math.round(c.height * esc));
@@ -3914,7 +4061,14 @@
                 if (opciones.contraste) mejorarContraste(e);
                 // En los collages por dato se quita el blanco sobrante alrededor del texto,
                 // así caben más datos por hoja y la letra se puede agrandar.
-                celdas[z.id] = compacto ? recortarAlTexto(e) : e;
+                return compacto ? recortarAlTexto(e) : e;
+            };
+
+            zonasUsadas.forEach(z => {
+                const grupo = z.campos.length > 1;
+                const partes = z.campos.map(id => recs[id] ? preparar(recs[id], z, grupo) : null);
+                if (!partes.some(Boolean)) return;
+                celdas[z.id] = grupo ? apilarRecortes(partes) : partes[0];
             });
 
             let alto;
@@ -3933,9 +4087,13 @@
             : 0;
         if (anchoLimpio) zonasUsadas.forEach(z => { anchosCampo[z.id] = anchoLimpio; });
 
-        const anchoContenido = ficha
+        // Espacio para el delimitador "@@" al final de cada línea (si se pidió).
+        const conDelim = !!opciones.delimitador;
+        const anchoDelim = conDelim ? ESPACIO_DELIM + anchoTextoDelim(TAM_DELIM_MAX) : 0;
+
+        const anchoContenido = (ficha
             ? (rotulos ? ANCHO_ROTULO : 0) + ANCHO_FICHA
-            : zonasUsadas.reduce((s, z) => s + anchoDe(z), 0) + Math.max(0, zonasUsadas.length - 1) * HUECO;
+            : zonasUsadas.reduce((s, z) => s + anchoDe(z), 0) + Math.max(0, zonasUsadas.length - 1) * HUECO) + anchoDelim;
         const anchoBloque = anchoNum + anchoContenido + 2 * pad;
 
         // 3) Tamaño de la página y número de columnas que caben.
@@ -4075,19 +4233,28 @@
                                 x += ANCHO_ROTULO;
                             }
                             if (e) g.drawImage(e, x, yy);
+                            if (conDelim) dibujarDelimitador(g, x + (e ? e.width : 0) + ESPACIO_DELIM, yy + altoCampo / 2, e ? e.height : 40);
                             yy += altoCampo + 12;
                         });
                     } else {
                         let x = x0 + anchoNum + pad;
                         zonasUsadas.forEach(z => {
                             const e = f.celdas[z.id];
+                            const ultimo = z === zonasUsadas[zonasUsadas.length - 1];
                             if (e) {
-                                g.drawImage(e, x, y + (compacto ? (f.alto - e.height) / 2 : pad));
+                                const ye = y + (compacto ? (f.alto - e.height) / 2 : pad);
+                                g.drawImage(e, x, ye);
+                                // "@@" pegado al texto (no en una columna aparte) para que el OCR
+                                // lo lea en la misma línea del dato.
+                                if (conDelim && ultimo) dibujarDelimitador(g, x + e.width + ESPACIO_DELIM, ye + e.height / 2, e.height);
                             } else if (compacto) {
                                 // Recibo sin este dato: la fila queda marcada para no descuadrar la numeración.
                                 g.fillStyle = "#94a3b8";
                                 g.font = "bold 30px Arial";
                                 g.fillText("—", x, y + f.alto / 2 + 10);
+                                if (conDelim && ultimo) dibujarDelimitador(g, x + 40 + ESPACIO_DELIM, y + f.alto / 2, 40);
+                            } else if (conDelim && ultimo) {
+                                dibujarDelimitador(g, x, y + f.alto / 2, 40);
                             }
                             x += anchoDe(z) + HUECO;
                         });
@@ -4169,7 +4336,8 @@
             numeros: $("optNumeros").checked,
             letraGrande: $("optLetraGrande").checked,
             limpiar: $("optLimpiar").checked,
-            separar: $("optSeparar").checked
+            separar: $("optSeparar").checked,
+            delimitador: $("optDelimitador").checked
         };
 
         marcarCollagesDesactualizados();
@@ -4209,7 +4377,7 @@
 
                 if (porCampo) {
                     // Un collage por dato: todos los códigos juntos, todos los nombres juntos, etc.
-                    const campos = ZONAS.filter(z => lotes[k].items.some(it => tieneCampo(it.recibo, z.id)));
+                    const campos = columnasDe(lotes[k].items);
                     for (const z of campos) {
                         setStatus($("statusCollages"), `🧩 Lote ${k + 1} de ${lotes.length}: ${z.rotulo.toLowerCase()}…`);
                         collages.push(...await construirCollage(lotes[k].items, { ...info, campo: z }, { ...opciones, disposicion: "fila" }));
@@ -4221,7 +4389,7 @@
             $("barra").style.width = "100%";
             setStatus($("statusCollages"),
                 `✅ ${collages.length} imagen(es) listas con ${recibos.length} recibos` +
-                (porCampo ? " (una por cada dato: código, nombre, dirección, teléfono)" : "") +
+                (porCampo ? " (una por cada columna de datos)" : "") +
                 (grupos.length > 1 ? `, separadas en ${grupos.length} formatos` : "") +
                 ". Cada imagen se llena al máximo antes de pasar a la siguiente" +
                 ".", "success");
@@ -4363,7 +4531,8 @@
     //
     // - El recuadro blanco es la hoja: la foto se recorta exactamente ahí.
     // - Dentro del recuadro se dibujan las zonas de la plantilla (nombre,
-    //   dirección, código) en la misma posición relativa que marcaste en el
+    //   dirección, código, teléfono y, en "Datos completos", todos los demás)
+    //   en la misma posición relativa que marcaste en el
     //   paso 3. Alinea el recibo para que el texto caiga dentro de cada zona.
     // - Cada captura se agrega como recibo y se lee en segundo plano, así
     //   puedes seguir tomando fotos sin esperar.
@@ -4625,7 +4794,7 @@
 
         // Zonas de la plantilla (segmentos).
         {
-            ZONAS.forEach(z => {
+            camposFormato(formatoCamara()).forEach(z => {
                 // Las zonas están marcadas sobre el recibo derecho; en la cámara se muestran
                 // giradas al revés del giro que se le aplicará a la foto.
                 const zf = formatoCamara().zonas[z.id];
@@ -4639,7 +4808,7 @@
                 g.strokeRect(zx, zy, zw, zh);
 
                 g.font = "bold 13px Arial";
-                const etiqueta = z.nombre;
+                const etiqueta = etiquetaZona(z, formatoCamara());
                 const tw = g.measureText(etiqueta).width + 10;
                 g.fillStyle = z.color;
                 g.fillRect(zx, Math.max(y, zy - 20), tw, 20);
